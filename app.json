@@ -7,12 +7,6 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "scheme": "shambariziki",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#E6F4FE"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.shambariziki.app"
@@ -20,8 +14,6 @@
     "android": {
       "package": "com.shambariziki.app",
       "softwareKeyboardLayoutMode": "resize",
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -29,22 +21,17 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       }
     },
-    "androidStatusBar": {
-      "backgroundColor": "#00000000",
-      "barStyle": "dark-content",
-      "translucent": true
-    },
-    "androidNavigationBar": {
-      "backgroundColor": "#00000000",
-      "barStyle": "dark-content",
-      "visible": "leanback"
-    },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-localization",
       "expo-sqlite"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "fd5b741c-3d90-4ae4-b586-e847beec6d8c"
+      }
+    }
   }
 }

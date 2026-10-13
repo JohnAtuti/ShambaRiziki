@@ -1,25 +1,45 @@
-// App.tsx (excerpt)
-import { BackHandler, Alert } from 'react-native';
-import { useEffect } from 'react';
-import { useNavigation } from '@react-navigation/native';
+import "react-native-gesture-handler";
+import React, { useEffect } from "react";
+import { StatusBar } from "expo-status-bar";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
-// In your root navigator component:
-useEffect(() => {
-  const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-    // Let React Navigation handle it first
-    // If no screen can go back, show exit confirmation
-    if (!navigation.canGoBack()) {
-      Alert.alert(
-        'Exit app?',
-        'Do you want to close the app? / Unataka kufunga programu?',
-        [
-          { text: 'No / Hapana', style: 'cancel' },
-          { text: 'Yes / Ndiyo', onPress: () => BackHandler.exitApp() },
-        ]
-      );
-      return true; // block default
+import "./src/i18n";
+import { ErrorBoundary } from "./src/components/ErrorBoundary";
+import { ThemeProvider, useTheme } from "./src/theme/ThemeContext";
+import { RootNavigator } from "./src/navigation/RootNavigator";
+import { runSmokeTest } from "./src/db";
+
+const ThemedShell: React.FC = () => {
+  const { effective } = useTheme();
+
+  useEffect(() => {
+    // Dev-only data-layer verification. No-op in production.
+    if (__DEV__) {
+      runSmokeTest().catch((error) => {
+        console.error("[db] ❌ smoke test FAILED", error);
+      });
     }
-    return false;
-  });
-  return () => sub.remove();
-}, [navigation]);
+  }, []);
+
+  return (
+    <>
+      <StatusBar style={effective === "dark" ? "light" : "dark"} />
+      <RootNavigator />
+    </>
+  );
+};
+
+export default function App(): React.ReactElement {
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <ErrorBoundary>
+          <ThemeProvider>
+            <ThemedShell />
+          </ThemeProvider>
+        </ErrorBoundary>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
+  );
+}
