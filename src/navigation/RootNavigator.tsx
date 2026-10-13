@@ -21,6 +21,17 @@ import { PlotCyclesScreen } from "../screens/PlotCyclesScreen";
 import { CycleFormScreen } from "../screens/CycleFormScreen";
 import { CycleDetailScreen } from "../screens/CycleDetailScreen";
 import { ActivityFormScreen } from "../screens/ActivityFormScreen";
+import { LivestockScreen } from "../screens/LivestockScreen";
+import { HerdsListScreen } from "../screens/HerdsListScreen";
+import { HerdFormScreen } from "../screens/HerdFormScreen";
+import { HerdDetailScreen } from "../screens/HerdDetailScreen";
+import { AnimalsListScreen } from "../screens/AnimalsListScreen";
+import { AnimalFormScreen } from "../screens/AnimalFormScreen";
+import { AnimalDetailScreen } from "../screens/AnimalDetailScreen";
+import { AnimalHealthFormScreen } from "../screens/AnimalHealthFormScreen";
+import { AnimalBreedingFormScreen } from "../screens/AnimalBreedingFormScreen";
+import { AnimalFeedFormScreen } from "../screens/AnimalFeedFormScreen";
+import { AnimalProductionFormScreen } from "../screens/AnimalProductionFormScreen";
 import { useTheme } from "../theme/ThemeContext";
 import { useAppState } from "../state/AppStateContext";
 
@@ -144,6 +155,87 @@ export const RootNavigator: React.FC = () => {
                   : t("new_activity"),
               })}
             />
+
+            <Stack.Screen
+              name="Livestock"
+              component={LivestockScreen}
+              options={{ title: t("livestock") }}
+            />
+            <Stack.Screen
+              name="Herds"
+              component={HerdsListScreen}
+              options={{ title: t("herds") }}
+            />
+            <Stack.Screen
+              name="HerdForm"
+              component={HerdFormScreen}
+              options={({ route }) => ({
+                title: route.params?.herdId ? t("edit_herd") : t("new_herd"),
+              })}
+            />
+            <Stack.Screen
+              name="HerdDetail"
+              component={HerdDetailScreen}
+              options={{ title: t("herd_details") }}
+            />
+            <Stack.Screen
+              name="Animals"
+              component={AnimalsListScreen}
+              options={({ route }) => ({
+                title: route.params?.herdId ? t("herd_members") : t("animals"),
+              })}
+            />
+            <Stack.Screen
+              name="AnimalForm"
+              component={AnimalFormScreen}
+              options={({ route }) => ({
+                title: route.params?.animalId
+                  ? t("edit_animal")
+                  : t("new_animal"),
+              })}
+            />
+            <Stack.Screen
+              name="AnimalDetail"
+              component={AnimalDetailScreen}
+              options={{ title: t("animal_details") }}
+            />
+            <Stack.Screen
+              name="AnimalHealthForm"
+              component={AnimalHealthFormScreen}
+              options={({ route }) => ({
+                title: route.params?.recordId
+                  ? t("edit_health_record")
+                  : t("new_health_record"),
+              })}
+            />
+            <Stack.Screen
+              name="AnimalBreedingForm"
+              component={AnimalBreedingFormScreen}
+              options={({ route }) => ({
+                title: route.params?.recordId
+                  ? t("edit_breeding_record")
+                  : t("new_breeding_record"),
+              })}
+            />
+            <Stack.Screen
+              name="AnimalFeedForm"
+              component={AnimalFeedFormScreen}
+              options={({ route }) => ({
+                title: route.params?.recordId
+                  ? t("edit_feed_record")
+                  : t("new_feed_record"),
+              })}
+            />
+            <Stack.Screen
+              name="AnimalProductionForm"
+              component={AnimalProductionFormScreen}
+              options={({ route }) => ({
+                title: route.params?.recordId
+                  ? t("edit_production_record")
+                  : t("new_production_record"),
+              })}
+            />
+
             <Stack.Screen
               name="Placeholder"
               component={PlaceholderScreen}

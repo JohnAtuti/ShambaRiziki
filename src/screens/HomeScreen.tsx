@@ -11,7 +11,7 @@ import { radius, spacing } from "../theme/colors";
 import { typography } from "../theme/typography";
 import type { RootStackScreenProps } from "../navigation/types";
 
-type TileRoute = "Plots" | "Crops" | "Placeholder";
+type TileRoute = "Plots" | "Crops" | "Livestock" | "Placeholder";
 
 type Tile = {
   key: string;
@@ -23,7 +23,7 @@ type Tile = {
 const TILES: readonly Tile[] = [
   { key: "plots", emoji: "🌍", color: "#6D4C41", route: "Plots" },
   { key: "crops", emoji: "🌱", color: "#43A047", route: "Crops" },
-  { key: "livestock", emoji: "🐄", color: "#8D6E63", route: "Placeholder" },
+  { key: "livestock", emoji: "🐄", color: "#8D6E63", route: "Livestock" },
   { key: "inventory", emoji: "📦", color: "#FB8C00", route: "Placeholder" },
   { key: "tasks", emoji: "✅", color: "#1E88E5", route: "Placeholder" },
   { key: "money", emoji: "💰", color: "#FDD835", route: "Placeholder" },
@@ -38,13 +38,10 @@ export const HomeScreen: React.FC<RootStackScreenProps<"Home">> = ({
 
   const openTile = useCallback(
     (tile: Tile): void => {
-      if (tile.route === "Plots") {
-        navigation.navigate("Plots");
-      } else if (tile.route === "Crops") {
-        navigation.navigate("Crops");
-      } else {
-        navigation.navigate("Placeholder", { titleKey: tile.key });
-      }
+      if (tile.route === "Plots") navigation.navigate("Plots");
+      else if (tile.route === "Crops") navigation.navigate("Crops");
+      else if (tile.route === "Livestock") navigation.navigate("Livestock");
+      else navigation.navigate("Placeholder", { titleKey: tile.key });
     },
     [navigation],
   );
@@ -111,10 +108,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   appName: typography.display,
-  tagline: {
-    ...typography.label,
-    marginTop: 4,
-  },
+  tagline: { ...typography.label, marginTop: 4 },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",

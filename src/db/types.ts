@@ -72,8 +72,86 @@ export type CropActivityType =
 
 export type AttachmentKind = "photo" | "voice" | "document";
 
+// Livestock enums
+
+export type Species =
+  | "cattle"
+  | "goat"
+  | "sheep"
+  | "chicken"
+  | "pig"
+  | "rabbit"
+  | "duck"
+  | "turkey"
+  | "fish"
+  | "bee"
+  | "other";
+
+export type HerdPurpose =
+  | "dairy"
+  | "meat"
+  | "eggs"
+  | "wool"
+  | "breeding"
+  | "mixed"
+  | "other";
+
+export type AnimalSex = "male" | "female" | "unknown";
+
+export type AnimalOrigin =
+  | "born_on_farm"
+  | "purchased"
+  | "gifted"
+  | "inherited"
+  | "unknown";
+
+export type AnimalStatus =
+  | "alive"
+  | "sold"
+  | "dead"
+  | "slaughtered"
+  | "culled"
+  | "missing";
+
+export type HealthRecordType =
+  | "vaccination"
+  | "deworming"
+  | "treatment"
+  | "illness"
+  | "injury"
+  | "mortality"
+  | "quarantine";
+
+export type BreedingRecordType =
+  | "mating"
+  | "pregnancy_check"
+  | "birth"
+  | "weaning"
+  | "abortion";
+
+export type BreedingMethod = "natural" | "artificial_insemination" | "unknown";
+
+export type FeedType =
+  | "hay"
+  | "silage"
+  | "concentrate"
+  | "pasture"
+  | "kitchen_scraps"
+  | "minerals"
+  | "water"
+  | "other";
+
+export type ProductionType =
+  | "milk"
+  | "eggs"
+  | "wool"
+  | "honey"
+  | "weight"
+  | "meat"
+  | "other";
+
 // ---------------------------------------------------------------------------
-// Base entity — every table inherits these columns verbatim.
+// Base entity
 // ---------------------------------------------------------------------------
 
 export interface BaseEntity {
@@ -185,6 +263,91 @@ export interface Attachment extends BaseEntity {
   caption: string | null;
 }
 
+export interface Herd extends BaseEntity {
+  farmId: string;
+  name: string;
+  species: Species;
+  breed: string | null;
+  purpose: HerdPurpose;
+  notes: string | null;
+}
+
+export interface Animal extends BaseEntity {
+  farmId: string;
+  herdId: string | null;
+  tagId: string;
+  name: string | null;
+  species: Species;
+  breed: string | null;
+  sex: AnimalSex;
+  dateOfBirth: string | null;
+  origin: AnimalOrigin;
+  purchaseDate: string | null;
+  purchasePrice: number | null;
+  motherId: string | null;
+  fatherId: string | null;
+  status: AnimalStatus;
+  bodyConditionScore: number | null;
+  notes: string | null;
+}
+
+export interface AnimalHealthRecord extends BaseEntity {
+  farmId: string;
+  animalId: string;
+  recordType: HealthRecordType;
+  recordDate: string;
+  productName: string | null;
+  dosage: number | null;
+  dosageUnit: string | null;
+  administeredBy: string | null;
+  diagnosis: string | null;
+  symptoms: string | null;
+  cost: number | null;
+  costCurrency: string | null;
+  withdrawalPeriodDays: number | null;
+  notes: string | null;
+}
+
+export interface AnimalBreedingRecord extends BaseEntity {
+  farmId: string;
+  animalId: string;
+  recordType: BreedingRecordType;
+  recordDate: string;
+  sireId: string | null;
+  method: BreedingMethod | null;
+  pregnancyConfirmedDate: string | null;
+  expectedDueDate: string | null;
+  offspringCount: number | null;
+  notes: string | null;
+}
+
+export interface AnimalFeedRecord extends BaseEntity {
+  farmId: string;
+  animalId: string | null;
+  herdId: string | null;
+  recordDate: string;
+  feedType: FeedType;
+  quantity: number | null;
+  quantityUnit: string | null;
+  cost: number | null;
+  costCurrency: string | null;
+  notes: string | null;
+}
+
+export interface AnimalProductionRecord extends BaseEntity {
+  farmId: string;
+  animalId: string | null;
+  herdId: string | null;
+  recordDate: string;
+  productionType: ProductionType;
+  quantity: number | null;
+  quantityUnit: string | null;
+  quality: string | null;
+  weightKg: number | null;
+  bodyConditionScore: number | null;
+  notes: string | null;
+}
+
 export type AuditAction = "create" | "update" | "delete" | "restore";
 
 export interface AuditLogEntry {
@@ -198,7 +361,7 @@ export interface AuditLogEntry {
 }
 
 // ---------------------------------------------------------------------------
-// Row shapes — exactly what SQLite returns (snake_case, ints for booleans).
+// Row shapes
 // ---------------------------------------------------------------------------
 
 export interface UserRow {
@@ -345,6 +508,133 @@ export interface AttachmentRow {
   metadata: string;
 }
 
+export interface HerdRow {
+  id: string;
+  farm_id: string;
+  name: string;
+  species: string;
+  breed: string | null;
+  purpose: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  version: number;
+  sync_status: string;
+  metadata: string;
+}
+
+export interface AnimalRow {
+  id: string;
+  farm_id: string;
+  herd_id: string | null;
+  tag_id: string;
+  name: string | null;
+  species: string;
+  breed: string | null;
+  sex: string;
+  date_of_birth: string | null;
+  origin: string;
+  purchase_date: string | null;
+  purchase_price: number | null;
+  mother_id: string | null;
+  father_id: string | null;
+  status: string;
+  body_condition_score: number | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  version: number;
+  sync_status: string;
+  metadata: string;
+}
+
+export interface AnimalHealthRecordRow {
+  id: string;
+  farm_id: string;
+  animal_id: string;
+  record_type: string;
+  record_date: string;
+  product_name: string | null;
+  dosage: number | null;
+  dosage_unit: string | null;
+  administered_by: string | null;
+  diagnosis: string | null;
+  symptoms: string | null;
+  cost: number | null;
+  cost_currency: string | null;
+  withdrawal_period_days: number | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  version: number;
+  sync_status: string;
+  metadata: string;
+}
+
+export interface AnimalBreedingRecordRow {
+  id: string;
+  farm_id: string;
+  animal_id: string;
+  record_type: string;
+  record_date: string;
+  sire_id: string | null;
+  method: string | null;
+  pregnancy_confirmed_date: string | null;
+  expected_due_date: string | null;
+  offspring_count: number | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  version: number;
+  sync_status: string;
+  metadata: string;
+}
+
+export interface AnimalFeedRecordRow {
+  id: string;
+  farm_id: string;
+  animal_id: string | null;
+  herd_id: string | null;
+  record_date: string;
+  feed_type: string;
+  quantity: number | null;
+  quantity_unit: string | null;
+  cost: number | null;
+  cost_currency: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  version: number;
+  sync_status: string;
+  metadata: string;
+}
+
+export interface AnimalProductionRecordRow {
+  id: string;
+  farm_id: string;
+  animal_id: string | null;
+  herd_id: string | null;
+  record_date: string;
+  production_type: string;
+  quantity: number | null;
+  quantity_unit: string | null;
+  quality: string | null;
+  weight_kg: number | null;
+  body_condition_score: number | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  version: number;
+  sync_status: string;
+  metadata: string;
+}
+
 export interface AuditLogRow {
   id: string;
   user_id: string | null;
@@ -356,7 +646,7 @@ export interface AuditLogRow {
 }
 
 // ---------------------------------------------------------------------------
-// Row → Domain mappers
+// Row -> Domain mappers
 // ---------------------------------------------------------------------------
 
 const safeParseObject = (raw: string): Record<string, unknown> => {
@@ -507,6 +797,141 @@ export const mapAttachmentRow = (row: AttachmentRow): Attachment => ({
   sizeBytes: row.size_bytes,
   durationMs: row.duration_ms,
   caption: row.caption,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+  deletedAt: row.deleted_at,
+  version: row.version,
+  syncStatus: row.sync_status as SyncStatus,
+  metadata: safeParseObject(row.metadata),
+});
+
+export const mapHerdRow = (row: HerdRow): Herd => ({
+  id: row.id,
+  farmId: row.farm_id,
+  name: row.name,
+  species: row.species as Species,
+  breed: row.breed,
+  purpose: row.purpose as HerdPurpose,
+  notes: row.notes,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+  deletedAt: row.deleted_at,
+  version: row.version,
+  syncStatus: row.sync_status as SyncStatus,
+  metadata: safeParseObject(row.metadata),
+});
+
+export const mapAnimalRow = (row: AnimalRow): Animal => ({
+  id: row.id,
+  farmId: row.farm_id,
+  herdId: row.herd_id,
+  tagId: row.tag_id,
+  name: row.name,
+  species: row.species as Species,
+  breed: row.breed,
+  sex: row.sex as AnimalSex,
+  dateOfBirth: row.date_of_birth,
+  origin: row.origin as AnimalOrigin,
+  purchaseDate: row.purchase_date,
+  purchasePrice: row.purchase_price,
+  motherId: row.mother_id,
+  fatherId: row.father_id,
+  status: row.status as AnimalStatus,
+  bodyConditionScore: row.body_condition_score,
+  notes: row.notes,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+  deletedAt: row.deleted_at,
+  version: row.version,
+  syncStatus: row.sync_status as SyncStatus,
+  metadata: safeParseObject(row.metadata),
+});
+
+export const mapAnimalHealthRow = (
+  row: AnimalHealthRecordRow,
+): AnimalHealthRecord => ({
+  id: row.id,
+  farmId: row.farm_id,
+  animalId: row.animal_id,
+  recordType: row.record_type as HealthRecordType,
+  recordDate: row.record_date,
+  productName: row.product_name,
+  dosage: row.dosage,
+  dosageUnit: row.dosage_unit,
+  administeredBy: row.administered_by,
+  diagnosis: row.diagnosis,
+  symptoms: row.symptoms,
+  cost: row.cost,
+  costCurrency: row.cost_currency,
+  withdrawalPeriodDays: row.withdrawal_period_days,
+  notes: row.notes,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+  deletedAt: row.deleted_at,
+  version: row.version,
+  syncStatus: row.sync_status as SyncStatus,
+  metadata: safeParseObject(row.metadata),
+});
+
+export const mapAnimalBreedingRow = (
+  row: AnimalBreedingRecordRow,
+): AnimalBreedingRecord => ({
+  id: row.id,
+  farmId: row.farm_id,
+  animalId: row.animal_id,
+  recordType: row.record_type as BreedingRecordType,
+  recordDate: row.record_date,
+  sireId: row.sire_id,
+  method: (row.method as BreedingMethod | null) ?? null,
+  pregnancyConfirmedDate: row.pregnancy_confirmed_date,
+  expectedDueDate: row.expected_due_date,
+  offspringCount: row.offspring_count,
+  notes: row.notes,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+  deletedAt: row.deleted_at,
+  version: row.version,
+  syncStatus: row.sync_status as SyncStatus,
+  metadata: safeParseObject(row.metadata),
+});
+
+export const mapAnimalFeedRow = (
+  row: AnimalFeedRecordRow,
+): AnimalFeedRecord => ({
+  id: row.id,
+  farmId: row.farm_id,
+  animalId: row.animal_id,
+  herdId: row.herd_id,
+  recordDate: row.record_date,
+  feedType: row.feed_type as FeedType,
+  quantity: row.quantity,
+  quantityUnit: row.quantity_unit,
+  cost: row.cost,
+  costCurrency: row.cost_currency,
+  notes: row.notes,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+  deletedAt: row.deleted_at,
+  version: row.version,
+  syncStatus: row.sync_status as SyncStatus,
+  metadata: safeParseObject(row.metadata),
+});
+
+export const mapAnimalProductionRow = (
+  row: AnimalProductionRecordRow,
+): AnimalProductionRecord => ({
+  id: row.id,
+  farmId: row.farm_id,
+  animalId: row.animal_id,
+  herdId: row.herd_id,
+  recordDate: row.record_date,
+  productionType: row.production_type as ProductionType,
+  quantity: row.quantity,
+  quantityUnit: row.quantity_unit,
+  quality: row.quality,
+  weightKg: row.weight_kg,
+  bodyConditionScore: row.body_condition_score,
+  notes: row.notes,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
   deletedAt: row.deleted_at,

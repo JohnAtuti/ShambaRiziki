@@ -5,7 +5,7 @@ export { getDb, closeDb } from "./client";
 export { newId } from "./id";
 export { nowIso, isoDaysAgo } from "./time";
 
-// Errors — all data-layer failures are one of these
+// Errors
 export { DbError, NotFoundError, ValidationError } from "./errors";
 
 // PIN hashing
@@ -53,6 +53,44 @@ export type {
   UpdateAttachmentInput,
   AttachmentRepo,
 } from "./attachments";
+
+export { herdRepo } from "./herds";
+export type { CreateHerdInput, UpdateHerdInput, HerdRepo } from "./herds";
+
+export { animalRepo } from "./animals";
+export type {
+  CreateAnimalInput,
+  UpdateAnimalInput,
+  AnimalRepo,
+} from "./animals";
+
+export { animalHealthRepo } from "./animalHealth";
+export type {
+  CreateHealthRecordInput,
+  UpdateHealthRecordInput,
+  AnimalHealthRepo,
+} from "./animalHealth";
+
+export { animalBreedingRepo } from "./animalBreeding";
+export type {
+  CreateBreedingRecordInput,
+  UpdateBreedingRecordInput,
+  AnimalBreedingRepo,
+} from "./animalBreeding";
+
+export { animalFeedingRepo } from "./animalFeeding";
+export type {
+  CreateFeedRecordInput,
+  UpdateFeedRecordInput,
+  AnimalFeedingRepo,
+} from "./animalFeeding";
+
+export { animalProductionRepo } from "./animalProduction";
+export type {
+  CreateProductionRecordInput,
+  UpdateProductionRecordInput,
+  AnimalProductionRepo,
+} from "./animalProduction";
 
 export { settingsRepo } from "./settings";
 export type { SettingsRepo, SettingsRow } from "./settings";

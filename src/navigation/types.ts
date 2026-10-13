@@ -7,23 +7,40 @@ export type RootStackParamList = {
   // Home
   Home: undefined;
 
-  // Plots (Phase 3)
+  // Plots
   Plots: undefined;
   PlotDetail: { plotId: string };
   PlotForm: { plotId?: string };
 
-  // Crops catalog (Phase 4)
+  // Crops
   Crops: undefined;
   CropDetail: { cropId: string };
   CropForm: { cropId?: string };
 
-  // Crop cycles (Phase 4)
+  // Crop cycles
   PlotCycles: { plotId: string };
   CycleDetail: { cycleId: string };
   CycleForm: { plotId?: string; cycleId?: string };
 
-  // Crop activities (Phase 4)
+  // Crop activities
   ActivityForm: { cycleId: string; activityId?: string };
+
+  // Livestock
+  Livestock: undefined;
+  Herds: undefined;
+  HerdForm: { herdId?: string };
+  HerdDetail: { herdId: string };
+  Animals: { herdId?: string };
+  AnimalForm: { animalId?: string; defaultHerdId?: string };
+  AnimalDetail: { animalId: string };
+  AnimalHealthForm: { animalId: string; recordId?: string };
+  AnimalBreedingForm: { animalId: string; recordId?: string };
+  AnimalFeedForm: { animalId?: string; herdId?: string; recordId?: string };
+  AnimalProductionForm: {
+    animalId?: string;
+    herdId?: string;
+    recordId?: string;
+  };
 
   // Placeholder for modules not built yet
   Placeholder: { titleKey: string };

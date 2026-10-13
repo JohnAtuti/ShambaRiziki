@@ -251,11 +251,200 @@ const cropCyclesAndActivities: Migration = {
   },
 };
 
+const livestock: Migration = {
+  version: 5,
+  name: "livestock",
+  up: async (db) => {
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS herds (
+        id                TEXT PRIMARY KEY NOT NULL,
+        farm_id           TEXT NOT NULL,
+        name              TEXT NOT NULL,
+        species           TEXT NOT NULL DEFAULT 'cattle',
+        breed             TEXT,
+        purpose           TEXT NOT NULL DEFAULT 'mixed',
+        notes             TEXT,
+        created_at        TEXT NOT NULL,
+        updated_at        TEXT NOT NULL,
+        deleted_at        TEXT,
+        version           INTEGER NOT NULL DEFAULT 1,
+        sync_status       TEXT NOT NULL DEFAULT 'local',
+        metadata          TEXT NOT NULL DEFAULT '{}',
+        FOREIGN KEY (farm_id) REFERENCES farms(id) ON DELETE RESTRICT
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_herds_farm    ON herds(farm_id);
+      CREATE INDEX IF NOT EXISTS idx_herds_species ON herds(species);
+      CREATE INDEX IF NOT EXISTS idx_herds_deleted ON herds(deleted_at);
+
+      CREATE TABLE IF NOT EXISTS animals (
+        id                    TEXT PRIMARY KEY NOT NULL,
+        farm_id               TEXT NOT NULL,
+        herd_id               TEXT,
+        tag_id                TEXT NOT NULL,
+        name                  TEXT,
+        species               TEXT NOT NULL DEFAULT 'cattle',
+        breed                 TEXT,
+        sex                   TEXT NOT NULL DEFAULT 'unknown',
+        date_of_birth         TEXT,
+        origin                TEXT NOT NULL DEFAULT 'unknown',
+        purchase_date         TEXT,
+        purchase_price        REAL,
+        mother_id             TEXT,
+        father_id             TEXT,
+        status                TEXT NOT NULL DEFAULT 'alive',
+        body_condition_score  REAL,
+        notes                 TEXT,
+        created_at            TEXT NOT NULL,
+        updated_at            TEXT NOT NULL,
+        deleted_at            TEXT,
+        version               INTEGER NOT NULL DEFAULT 1,
+        sync_status           TEXT NOT NULL DEFAULT 'local',
+        metadata              TEXT NOT NULL DEFAULT '{}',
+        FOREIGN KEY (farm_id) REFERENCES farms(id) ON DELETE RESTRICT,
+        FOREIGN KEY (herd_id) REFERENCES herds(id) ON DELETE SET NULL,
+        FOREIGN KEY (mother_id) REFERENCES animals(id) ON DELETE SET NULL,
+        FOREIGN KEY (father_id) REFERENCES animals(id) ON DELETE SET NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_animals_farm    ON animals(farm_id);
+      CREATE INDEX IF NOT EXISTS idx_animals_herd    ON animals(herd_id);
+      CREATE INDEX IF NOT EXISTS idx_animals_tag     ON animals(tag_id);
+      CREATE INDEX IF NOT EXISTS idx_animals_species ON animals(species);
+      CREATE INDEX IF NOT EXISTS idx_animals_status  ON animals(status);
+      CREATE INDEX IF NOT EXISTS idx_animals_deleted ON animals(deleted_at);
+
+      CREATE TABLE IF NOT EXISTS animal_health_records (
+        id                     TEXT PRIMARY KEY NOT NULL,
+        farm_id                TEXT NOT NULL,
+        animal_id              TEXT NOT NULL,
+        record_type            TEXT NOT NULL,
+        record_date            TEXT NOT NULL,
+        product_name           TEXT,
+        dosage                 REAL,
+        dosage_unit            TEXT,
+        administered_by        TEXT,
+        diagnosis              TEXT,
+        symptoms               TEXT,
+        cost                   REAL,
+        cost_currency          TEXT,
+        withdrawal_period_days INTEGER,
+        notes                  TEXT,
+        created_at             TEXT NOT NULL,
+        updated_at             TEXT NOT NULL,
+        deleted_at             TEXT,
+        version                INTEGER NOT NULL DEFAULT 1,
+        sync_status            TEXT NOT NULL DEFAULT 'local',
+        metadata               TEXT NOT NULL DEFAULT '{}',
+        FOREIGN KEY (farm_id) REFERENCES farms(id) ON DELETE RESTRICT,
+        FOREIGN KEY (animal_id) REFERENCES animals(id) ON DELETE RESTRICT
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_health_farm    ON animal_health_records(farm_id);
+      CREATE INDEX IF NOT EXISTS idx_health_animal  ON animal_health_records(animal_id);
+      CREATE INDEX IF NOT EXISTS idx_health_type    ON animal_health_records(record_type);
+      CREATE INDEX IF NOT EXISTS idx_health_date    ON animal_health_records(record_date);
+      CREATE INDEX IF NOT EXISTS idx_health_deleted ON animal_health_records(deleted_at);
+
+      CREATE TABLE IF NOT EXISTS animal_breeding_records (
+        id                        TEXT PRIMARY KEY NOT NULL,
+        farm_id                   TEXT NOT NULL,
+        animal_id                 TEXT NOT NULL,
+        record_type               TEXT NOT NULL,
+        record_date               TEXT NOT NULL,
+        sire_id                   TEXT,
+        method                    TEXT,
+        pregnancy_confirmed_date  TEXT,
+        expected_due_date         TEXT,
+        offspring_count           INTEGER,
+        notes                     TEXT,
+        created_at                TEXT NOT NULL,
+        updated_at                TEXT NOT NULL,
+        deleted_at                TEXT,
+        version                   INTEGER NOT NULL DEFAULT 1,
+        sync_status               TEXT NOT NULL DEFAULT 'local',
+        metadata                  TEXT NOT NULL DEFAULT '{}',
+        FOREIGN KEY (farm_id) REFERENCES farms(id) ON DELETE RESTRICT,
+        FOREIGN KEY (animal_id) REFERENCES animals(id) ON DELETE RESTRICT,
+        FOREIGN KEY (sire_id) REFERENCES animals(id) ON DELETE SET NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_breeding_farm    ON animal_breeding_records(farm_id);
+      CREATE INDEX IF NOT EXISTS idx_breeding_animal  ON animal_breeding_records(animal_id);
+      CREATE INDEX IF NOT EXISTS idx_breeding_sire    ON animal_breeding_records(sire_id);
+      CREATE INDEX IF NOT EXISTS idx_breeding_type    ON animal_breeding_records(record_type);
+      CREATE INDEX IF NOT EXISTS idx_breeding_date    ON animal_breeding_records(record_date);
+      CREATE INDEX IF NOT EXISTS idx_breeding_deleted ON animal_breeding_records(deleted_at);
+
+      CREATE TABLE IF NOT EXISTS animal_feed_records (
+        id            TEXT PRIMARY KEY NOT NULL,
+        farm_id       TEXT NOT NULL,
+        animal_id     TEXT,
+        herd_id       TEXT,
+        record_date   TEXT NOT NULL,
+        feed_type     TEXT NOT NULL,
+        quantity      REAL,
+        quantity_unit TEXT,
+        cost          REAL,
+        cost_currency TEXT,
+        notes         TEXT,
+        created_at    TEXT NOT NULL,
+        updated_at    TEXT NOT NULL,
+        deleted_at    TEXT,
+        version       INTEGER NOT NULL DEFAULT 1,
+        sync_status   TEXT NOT NULL DEFAULT 'local',
+        metadata      TEXT NOT NULL DEFAULT '{}',
+        FOREIGN KEY (farm_id) REFERENCES farms(id) ON DELETE RESTRICT,
+        FOREIGN KEY (animal_id) REFERENCES animals(id) ON DELETE SET NULL,
+        FOREIGN KEY (herd_id) REFERENCES herds(id) ON DELETE SET NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_feed_farm    ON animal_feed_records(farm_id);
+      CREATE INDEX IF NOT EXISTS idx_feed_animal  ON animal_feed_records(animal_id);
+      CREATE INDEX IF NOT EXISTS idx_feed_herd    ON animal_feed_records(herd_id);
+      CREATE INDEX IF NOT EXISTS idx_feed_date    ON animal_feed_records(record_date);
+      CREATE INDEX IF NOT EXISTS idx_feed_deleted ON animal_feed_records(deleted_at);
+
+      CREATE TABLE IF NOT EXISTS animal_production_records (
+        id                    TEXT PRIMARY KEY NOT NULL,
+        farm_id               TEXT NOT NULL,
+        animal_id             TEXT,
+        herd_id               TEXT,
+        record_date           TEXT NOT NULL,
+        production_type       TEXT NOT NULL,
+        quantity              REAL,
+        quantity_unit         TEXT,
+        quality               TEXT,
+        weight_kg             REAL,
+        body_condition_score  REAL,
+        notes                 TEXT,
+        created_at            TEXT NOT NULL,
+        updated_at            TEXT NOT NULL,
+        deleted_at            TEXT,
+        version               INTEGER NOT NULL DEFAULT 1,
+        sync_status           TEXT NOT NULL DEFAULT 'local',
+        metadata              TEXT NOT NULL DEFAULT '{}',
+        FOREIGN KEY (farm_id) REFERENCES farms(id) ON DELETE RESTRICT,
+        FOREIGN KEY (animal_id) REFERENCES animals(id) ON DELETE SET NULL,
+        FOREIGN KEY (herd_id) REFERENCES herds(id) ON DELETE SET NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_prod_farm    ON animal_production_records(farm_id);
+      CREATE INDEX IF NOT EXISTS idx_prod_animal  ON animal_production_records(animal_id);
+      CREATE INDEX IF NOT EXISTS idx_prod_herd    ON animal_production_records(herd_id);
+      CREATE INDEX IF NOT EXISTS idx_prod_type    ON animal_production_records(production_type);
+      CREATE INDEX IF NOT EXISTS idx_prod_date    ON animal_production_records(record_date);
+      CREATE INDEX IF NOT EXISTS idx_prod_deleted ON animal_production_records(deleted_at);
+    `);
+  },
+};
+
 export const MIGRATIONS: readonly Migration[] = [
   initial,
   plots,
   crops,
   cropCyclesAndActivities,
+  livestock,
 ];
 
 export const LATEST_VERSION: number = MIGRATIONS.reduce(
