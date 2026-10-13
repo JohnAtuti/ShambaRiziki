@@ -20,7 +20,7 @@ export {
   serialiseMetadata,
 } from "./repository";
 
-// Repos
+// Repos — existing
 export { userRepo, findSoleOwner } from "./users";
 export type { CreateUserInput, UpdateUserInput, UserRepo } from "./users";
 
@@ -91,6 +91,31 @@ export type {
   UpdateProductionRecordInput,
   AnimalProductionRepo,
 } from "./animalProduction";
+
+// Repos — inventory (new)
+export { warehouseRepo } from "./warehouses";
+export type {
+  CreateWarehouseInput,
+  UpdateWarehouseInput,
+  WarehouseRepo,
+} from "./warehouses";
+
+export { inventoryItemRepo } from "./inventoryItems";
+export type {
+  CreateItemInput,
+  UpdateItemInput,
+  InventoryItemRepo,
+  ItemStock,
+  ItemStockRow,
+} from "./inventoryItems";
+
+export { inventoryTransactionRepo } from "./inventoryTransactions";
+export type {
+  CreateTransactionInput,
+  UpdateTransactionInput,
+  InventoryTransactionRepo,
+  ExpiringBatch,
+} from "./inventoryTransactions";
 
 export { settingsRepo } from "./settings";
 export type { SettingsRepo, SettingsRow } from "./settings";

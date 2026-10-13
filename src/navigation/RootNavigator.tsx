@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import { Alert, BackHandler } from "react-native";
+
 import {
   NavigationContainer,
   useNavigationContainerRef,
@@ -32,6 +33,13 @@ import { AnimalHealthFormScreen } from "../screens/AnimalHealthFormScreen";
 import { AnimalBreedingFormScreen } from "../screens/AnimalBreedingFormScreen";
 import { AnimalFeedFormScreen } from "../screens/AnimalFeedFormScreen";
 import { AnimalProductionFormScreen } from "../screens/AnimalProductionFormScreen";
+import { InventoryScreen } from "../screens/InventoryScreen";
+import { WarehousesListScreen } from "../screens/WarehousesListScreen";
+import { WarehouseFormScreen } from "../screens/WarehouseFormScreen";
+import { ItemsListScreen } from "../screens/ItemsListScreen";
+import { ItemFormScreen } from "../screens/ItemFormScreen";
+import { ItemDetailScreen } from "../screens/ItemDetailScreen";
+import { TransactionFormScreen } from "../screens/TransactionFormScreen";
 import { useTheme } from "../theme/ThemeContext";
 import { useAppState } from "../state/AppStateContext";
 
@@ -100,6 +108,8 @@ export const RootNavigator: React.FC = () => {
               component={HomeScreen}
               options={{ headerShown: false }}
             />
+
+            {/* Plots */}
             <Stack.Screen
               name="Plots"
               component={PlotsListScreen}
@@ -117,6 +127,8 @@ export const RootNavigator: React.FC = () => {
                 title: route.params?.plotId ? t("edit_plot") : t("new_plot"),
               })}
             />
+
+            {/* Crops */}
             <Stack.Screen
               name="Crops"
               component={CropsListScreen}
@@ -156,6 +168,7 @@ export const RootNavigator: React.FC = () => {
               })}
             />
 
+            {/* Livestock */}
             <Stack.Screen
               name="Livestock"
               component={LivestockScreen}
@@ -233,6 +246,53 @@ export const RootNavigator: React.FC = () => {
                 title: route.params?.recordId
                   ? t("edit_production_record")
                   : t("new_production_record"),
+              })}
+            />
+
+            {/* Inventory */}
+            <Stack.Screen
+              name="Inventory"
+              component={InventoryScreen}
+              options={{ title: t("inventory_title") }}
+            />
+            <Stack.Screen
+              name="Warehouses"
+              component={WarehousesListScreen}
+              options={{ title: t("warehouses") }}
+            />
+            <Stack.Screen
+              name="WarehouseForm"
+              component={WarehouseFormScreen}
+              options={({ route }) => ({
+                title: route.params?.warehouseId
+                  ? t("edit_warehouse")
+                  : t("new_warehouse"),
+              })}
+            />
+            <Stack.Screen
+              name="Items"
+              component={ItemsListScreen}
+              options={{ title: t("items") }}
+            />
+            <Stack.Screen
+              name="ItemForm"
+              component={ItemFormScreen}
+              options={({ route }) => ({
+                title: route.params?.itemId ? t("edit_item") : t("new_item"),
+              })}
+            />
+            <Stack.Screen
+              name="ItemDetail"
+              component={ItemDetailScreen}
+              options={{ title: t("item_details") }}
+            />
+            <Stack.Screen
+              name="TransactionForm"
+              component={TransactionFormScreen}
+              options={({ route }) => ({
+                title: route.params.transactionId
+                  ? t("edit_transaction")
+                  : t("new_transaction"),
               })}
             />
 

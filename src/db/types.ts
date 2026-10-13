@@ -1,6 +1,5 @@
 // ---------------------------------------------------------------------------
-// Enums — TypeScript only. Adding a value never requires a DB migration
-// because the DB stores plain TEXT with no CHECK constraints.
+// Enums — TypeScript only. Adding a value never requires a DB migration.
 // ---------------------------------------------------------------------------
 
 export type Role =
@@ -71,8 +70,6 @@ export type CropActivityType =
   | "other";
 
 export type AttachmentKind = "photo" | "voice" | "document";
-
-// Livestock enums
 
 export type Species =
   | "cattle"
@@ -148,6 +145,36 @@ export type ProductionType =
   | "honey"
   | "weight"
   | "meat"
+  | "other";
+
+// Inventory enums
+
+export type ItemCategory =
+  | "seed"
+  | "fertilizer"
+  | "pesticide"
+  | "herbicide"
+  | "feed"
+  | "veterinary_drug"
+  | "fuel"
+  | "tool"
+  | "packaging"
+  | "other";
+
+export type InventoryTransactionType =
+  | "purchase" // stock in, from a supplier
+  | "issue" // stock out, consumed by a plot/animal/worker
+  | "return" // stock in, returned from a plot/animal/worker
+  | "adjustment_in" // stock in, correction or found stock
+  | "adjustment_out" // stock out, loss, theft, spoilage
+  | "stocktake"; // balance set point at a physical count; sign via delta
+
+export type InventoryTargetType =
+  | "plot"
+  | "animal"
+  | "herd"
+  | "crop_cycle"
+  | "worker"
   | "other";
 
 // ---------------------------------------------------------------------------
@@ -345,6 +372,50 @@ export interface AnimalProductionRecord extends BaseEntity {
   quality: string | null;
   weightKg: number | null;
   bodyConditionScore: number | null;
+  notes: string | null;
+}
+
+export interface Warehouse extends BaseEntity {
+  farmId: string;
+  name: string;
+  location: string | null;
+  notes: string | null;
+}
+
+export interface InventoryItem extends BaseEntity {
+  farmId: string;
+  name: string;
+  sku: string | null;
+  category: ItemCategory;
+  unit: string;
+  description: string | null;
+  reorderLevel: number | null;
+  reorderQuantity: number | null;
+  defaultCost: number | null;
+  defaultCostCurrency: string | null;
+  preferredSupplier: string | null;
+  isActive: boolean;
+  notes: string | null;
+}
+
+export interface InventoryTransaction extends BaseEntity {
+  farmId: string;
+  itemId: string;
+  warehouseId: string | null;
+  transactionType: InventoryTransactionType;
+  transactionDate: string;
+  quantity: number;
+  quantityUnit: string | null;
+  unitCost: number | null;
+  totalCost: number | null;
+  costCurrency: string | null;
+  supplier: string | null;
+  batchNumber: string | null;
+  expiryDate: string | null;
+  reference: string | null;
+  targetType: InventoryTargetType | null;
+  targetId: string | null;
+  targetLabel: string | null;
   notes: string | null;
 }
 
@@ -626,6 +697,71 @@ export interface AnimalProductionRecordRow {
   quality: string | null;
   weight_kg: number | null;
   body_condition_score: number | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  version: number;
+  sync_status: string;
+  metadata: string;
+}
+
+export interface WarehouseRow {
+  id: string;
+  farm_id: string;
+  name: string;
+  location: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  version: number;
+  sync_status: string;
+  metadata: string;
+}
+
+export interface InventoryItemRow {
+  id: string;
+  farm_id: string;
+  name: string;
+  sku: string | null;
+  category: string;
+  unit: string;
+  description: string | null;
+  reorder_level: number | null;
+  reorder_quantity: number | null;
+  default_cost: number | null;
+  default_cost_currency: string | null;
+  preferred_supplier: string | null;
+  is_active: number;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  version: number;
+  sync_status: string;
+  metadata: string;
+}
+
+export interface InventoryTransactionRow {
+  id: string;
+  farm_id: string;
+  item_id: string;
+  warehouse_id: string | null;
+  transaction_type: string;
+  transaction_date: string;
+  quantity: number;
+  quantity_unit: string | null;
+  unit_cost: number | null;
+  total_cost: number | null;
+  cost_currency: string | null;
+  supplier: string | null;
+  batch_number: string | null;
+  expiry_date: string | null;
+  reference: string | null;
+  target_type: string | null;
+  target_id: string | null;
+  target_label: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -931,6 +1067,73 @@ export const mapAnimalProductionRow = (
   quality: row.quality,
   weightKg: row.weight_kg,
   bodyConditionScore: row.body_condition_score,
+  notes: row.notes,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+  deletedAt: row.deleted_at,
+  version: row.version,
+  syncStatus: row.sync_status as SyncStatus,
+  metadata: safeParseObject(row.metadata),
+});
+
+export const mapWarehouseRow = (row: WarehouseRow): Warehouse => ({
+  id: row.id,
+  farmId: row.farm_id,
+  name: row.name,
+  location: row.location,
+  notes: row.notes,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+  deletedAt: row.deleted_at,
+  version: row.version,
+  syncStatus: row.sync_status as SyncStatus,
+  metadata: safeParseObject(row.metadata),
+});
+
+export const mapInventoryItemRow = (row: InventoryItemRow): InventoryItem => ({
+  id: row.id,
+  farmId: row.farm_id,
+  name: row.name,
+  sku: row.sku,
+  category: row.category as ItemCategory,
+  unit: row.unit,
+  description: row.description,
+  reorderLevel: row.reorder_level,
+  reorderQuantity: row.reorder_quantity,
+  defaultCost: row.default_cost,
+  defaultCostCurrency: row.default_cost_currency,
+  preferredSupplier: row.preferred_supplier,
+  isActive: row.is_active === 1,
+  notes: row.notes,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+  deletedAt: row.deleted_at,
+  version: row.version,
+  syncStatus: row.sync_status as SyncStatus,
+  metadata: safeParseObject(row.metadata),
+});
+
+export const mapInventoryTransactionRow = (
+  row: InventoryTransactionRow,
+): InventoryTransaction => ({
+  id: row.id,
+  farmId: row.farm_id,
+  itemId: row.item_id,
+  warehouseId: row.warehouse_id,
+  transactionType: row.transaction_type as InventoryTransactionType,
+  transactionDate: row.transaction_date,
+  quantity: row.quantity,
+  quantityUnit: row.quantity_unit,
+  unitCost: row.unit_cost,
+  totalCost: row.total_cost,
+  costCurrency: row.cost_currency,
+  supplier: row.supplier,
+  batchNumber: row.batch_number,
+  expiryDate: row.expiry_date,
+  reference: row.reference,
+  targetType: (row.target_type as InventoryTargetType | null) ?? null,
+  targetId: row.target_id,
+  targetLabel: row.target_label,
   notes: row.notes,
   createdAt: row.created_at,
   updatedAt: row.updated_at,

@@ -42,7 +42,19 @@ export type RootStackParamList = {
     recordId?: string;
   };
 
-  // Placeholder for modules not built yet
+  // Inventory
+  Inventory: undefined;
+  Warehouses: undefined;
+  WarehouseForm: { warehouseId?: string };
+  Items: undefined;
+  ItemForm: { itemId?: string };
+  ItemDetail: { itemId: string };
+  TransactionForm: {
+    itemId?: string;
+    transactionId?: string;
+  };
+
+  // Placeholder
   Placeholder: { titleKey: string };
 };
 

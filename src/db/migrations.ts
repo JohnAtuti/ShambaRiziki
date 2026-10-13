@@ -7,7 +7,7 @@ export type Migration = {
 };
 
 // ---------------------------------------------------------------------------
-// Migration rules (unchanged from v1):
+// Migration rules (unchanged):
 //   1. Never edit an existing migration. Add a new one.
 //   2. Never DROP a column. Add a new one, migrate data, leave the old one.
 //   3. Never use ON DELETE CASCADE. Use ON DELETE SET NULL or RESTRICT.
@@ -35,7 +35,6 @@ const initial: Migration = {
         sync_status       TEXT NOT NULL DEFAULT 'local',
         metadata          TEXT NOT NULL DEFAULT '{}'
       );
-
       CREATE INDEX IF NOT EXISTS idx_users_deleted  ON users(deleted_at);
       CREATE INDEX IF NOT EXISTS idx_users_role     ON users(role);
       CREATE INDEX IF NOT EXISTS idx_users_active   ON users(is_active);
@@ -63,7 +62,6 @@ const initial: Migration = {
         sync_status              TEXT NOT NULL DEFAULT 'local',
         metadata                 TEXT NOT NULL DEFAULT '{}'
       );
-
       CREATE INDEX IF NOT EXISTS idx_farms_deleted ON farms(deleted_at);
       CREATE INDEX IF NOT EXISTS idx_farms_active  ON farms(is_active);
 
@@ -77,7 +75,6 @@ const initial: Migration = {
         created_at   TEXT NOT NULL,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
       );
-
       CREATE INDEX IF NOT EXISTS idx_audit_entity  ON audit_log(entity_type, entity_id);
       CREATE INDEX IF NOT EXISTS idx_audit_user    ON audit_log(user_id);
       CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_log(created_at);
@@ -118,7 +115,6 @@ const plots: Migration = {
         metadata        TEXT NOT NULL DEFAULT '{}',
         FOREIGN KEY (farm_id) REFERENCES farms(id) ON DELETE RESTRICT
       );
-
       CREATE INDEX IF NOT EXISTS idx_plots_farm    ON plots(farm_id);
       CREATE INDEX IF NOT EXISTS idx_plots_deleted ON plots(deleted_at);
       CREATE INDEX IF NOT EXISTS idx_plots_use     ON plots(current_use);
@@ -147,7 +143,6 @@ const crops: Migration = {
         metadata           TEXT NOT NULL DEFAULT '{}',
         FOREIGN KEY (farm_id) REFERENCES farms(id) ON DELETE RESTRICT
       );
-
       CREATE INDEX IF NOT EXISTS idx_crops_farm     ON crops(farm_id);
       CREATE INDEX IF NOT EXISTS idx_crops_deleted  ON crops(deleted_at);
       CREATE INDEX IF NOT EXISTS idx_crops_category ON crops(category);
@@ -187,7 +182,6 @@ const cropCyclesAndActivities: Migration = {
         FOREIGN KEY (plot_id) REFERENCES plots(id) ON DELETE RESTRICT,
         FOREIGN KEY (crop_id) REFERENCES crops(id) ON DELETE RESTRICT
       );
-
       CREATE INDEX IF NOT EXISTS idx_cycles_farm    ON crop_cycles(farm_id);
       CREATE INDEX IF NOT EXISTS idx_cycles_plot    ON crop_cycles(plot_id);
       CREATE INDEX IF NOT EXISTS idx_cycles_crop    ON crop_cycles(crop_id);
@@ -215,7 +209,6 @@ const cropCyclesAndActivities: Migration = {
         FOREIGN KEY (farm_id) REFERENCES farms(id) ON DELETE RESTRICT,
         FOREIGN KEY (cycle_id) REFERENCES crop_cycles(id) ON DELETE RESTRICT
       );
-
       CREATE INDEX IF NOT EXISTS idx_activities_farm    ON crop_activities(farm_id);
       CREATE INDEX IF NOT EXISTS idx_activities_cycle   ON crop_activities(cycle_id);
       CREATE INDEX IF NOT EXISTS idx_activities_type    ON crop_activities(activity_type);
@@ -242,7 +235,6 @@ const cropCyclesAndActivities: Migration = {
         metadata      TEXT NOT NULL DEFAULT '{}',
         FOREIGN KEY (farm_id) REFERENCES farms(id) ON DELETE RESTRICT
       );
-
       CREATE INDEX IF NOT EXISTS idx_attachments_farm    ON attachments(farm_id);
       CREATE INDEX IF NOT EXISTS idx_attachments_entity  ON attachments(entity_type, entity_id);
       CREATE INDEX IF NOT EXISTS idx_attachments_kind    ON attachments(kind);
@@ -272,7 +264,6 @@ const livestock: Migration = {
         metadata          TEXT NOT NULL DEFAULT '{}',
         FOREIGN KEY (farm_id) REFERENCES farms(id) ON DELETE RESTRICT
       );
-
       CREATE INDEX IF NOT EXISTS idx_herds_farm    ON herds(farm_id);
       CREATE INDEX IF NOT EXISTS idx_herds_species ON herds(species);
       CREATE INDEX IF NOT EXISTS idx_herds_deleted ON herds(deleted_at);
@@ -306,7 +297,6 @@ const livestock: Migration = {
         FOREIGN KEY (mother_id) REFERENCES animals(id) ON DELETE SET NULL,
         FOREIGN KEY (father_id) REFERENCES animals(id) ON DELETE SET NULL
       );
-
       CREATE INDEX IF NOT EXISTS idx_animals_farm    ON animals(farm_id);
       CREATE INDEX IF NOT EXISTS idx_animals_herd    ON animals(herd_id);
       CREATE INDEX IF NOT EXISTS idx_animals_tag     ON animals(tag_id);
@@ -339,7 +329,6 @@ const livestock: Migration = {
         FOREIGN KEY (farm_id) REFERENCES farms(id) ON DELETE RESTRICT,
         FOREIGN KEY (animal_id) REFERENCES animals(id) ON DELETE RESTRICT
       );
-
       CREATE INDEX IF NOT EXISTS idx_health_farm    ON animal_health_records(farm_id);
       CREATE INDEX IF NOT EXISTS idx_health_animal  ON animal_health_records(animal_id);
       CREATE INDEX IF NOT EXISTS idx_health_type    ON animal_health_records(record_type);
@@ -368,7 +357,6 @@ const livestock: Migration = {
         FOREIGN KEY (animal_id) REFERENCES animals(id) ON DELETE RESTRICT,
         FOREIGN KEY (sire_id) REFERENCES animals(id) ON DELETE SET NULL
       );
-
       CREATE INDEX IF NOT EXISTS idx_breeding_farm    ON animal_breeding_records(farm_id);
       CREATE INDEX IF NOT EXISTS idx_breeding_animal  ON animal_breeding_records(animal_id);
       CREATE INDEX IF NOT EXISTS idx_breeding_sire    ON animal_breeding_records(sire_id);
@@ -398,7 +386,6 @@ const livestock: Migration = {
         FOREIGN KEY (animal_id) REFERENCES animals(id) ON DELETE SET NULL,
         FOREIGN KEY (herd_id) REFERENCES herds(id) ON DELETE SET NULL
       );
-
       CREATE INDEX IF NOT EXISTS idx_feed_farm    ON animal_feed_records(farm_id);
       CREATE INDEX IF NOT EXISTS idx_feed_animal  ON animal_feed_records(animal_id);
       CREATE INDEX IF NOT EXISTS idx_feed_herd    ON animal_feed_records(herd_id);
@@ -428,7 +415,6 @@ const livestock: Migration = {
         FOREIGN KEY (animal_id) REFERENCES animals(id) ON DELETE SET NULL,
         FOREIGN KEY (herd_id) REFERENCES herds(id) ON DELETE SET NULL
       );
-
       CREATE INDEX IF NOT EXISTS idx_prod_farm    ON animal_production_records(farm_id);
       CREATE INDEX IF NOT EXISTS idx_prod_animal  ON animal_production_records(animal_id);
       CREATE INDEX IF NOT EXISTS idx_prod_herd    ON animal_production_records(herd_id);
@@ -439,12 +425,106 @@ const livestock: Migration = {
   },
 };
 
+const inventory: Migration = {
+  version: 6,
+  name: "inventory",
+  up: async (db) => {
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS warehouses (
+        id          TEXT PRIMARY KEY NOT NULL,
+        farm_id     TEXT NOT NULL,
+        name        TEXT NOT NULL,
+        location    TEXT,
+        notes       TEXT,
+        created_at  TEXT NOT NULL,
+        updated_at  TEXT NOT NULL,
+        deleted_at  TEXT,
+        version     INTEGER NOT NULL DEFAULT 1,
+        sync_status TEXT NOT NULL DEFAULT 'local',
+        metadata    TEXT NOT NULL DEFAULT '{}',
+        FOREIGN KEY (farm_id) REFERENCES farms(id) ON DELETE RESTRICT
+      );
+      CREATE INDEX IF NOT EXISTS idx_warehouses_farm    ON warehouses(farm_id);
+      CREATE INDEX IF NOT EXISTS idx_warehouses_deleted ON warehouses(deleted_at);
+
+      CREATE TABLE IF NOT EXISTS inventory_items (
+        id                    TEXT PRIMARY KEY NOT NULL,
+        farm_id               TEXT NOT NULL,
+        name                  TEXT NOT NULL,
+        sku                   TEXT,
+        category              TEXT NOT NULL DEFAULT 'other',
+        unit                  TEXT NOT NULL DEFAULT 'unit',
+        description           TEXT,
+        reorder_level         REAL,
+        reorder_quantity      REAL,
+        default_cost          REAL,
+        default_cost_currency TEXT,
+        preferred_supplier    TEXT,
+        is_active             INTEGER NOT NULL DEFAULT 1,
+        notes                 TEXT,
+        created_at            TEXT NOT NULL,
+        updated_at            TEXT NOT NULL,
+        deleted_at            TEXT,
+        version               INTEGER NOT NULL DEFAULT 1,
+        sync_status           TEXT NOT NULL DEFAULT 'local',
+        metadata              TEXT NOT NULL DEFAULT '{}',
+        FOREIGN KEY (farm_id) REFERENCES farms(id) ON DELETE RESTRICT
+      );
+      CREATE INDEX IF NOT EXISTS idx_items_farm     ON inventory_items(farm_id);
+      CREATE INDEX IF NOT EXISTS idx_items_category ON inventory_items(category);
+      CREATE INDEX IF NOT EXISTS idx_items_sku      ON inventory_items(sku);
+      CREATE INDEX IF NOT EXISTS idx_items_active   ON inventory_items(is_active);
+      CREATE INDEX IF NOT EXISTS idx_items_deleted  ON inventory_items(deleted_at);
+
+      CREATE TABLE IF NOT EXISTS inventory_transactions (
+        id               TEXT PRIMARY KEY NOT NULL,
+        farm_id          TEXT NOT NULL,
+        item_id          TEXT NOT NULL,
+        warehouse_id     TEXT,
+        transaction_type TEXT NOT NULL,
+        transaction_date TEXT NOT NULL,
+        quantity         REAL NOT NULL,
+        quantity_unit    TEXT,
+        unit_cost        REAL,
+        total_cost       REAL,
+        cost_currency    TEXT,
+        supplier         TEXT,
+        batch_number     TEXT,
+        expiry_date      TEXT,
+        reference        TEXT,
+        target_type      TEXT,
+        target_id        TEXT,
+        target_label     TEXT,
+        notes            TEXT,
+        created_at       TEXT NOT NULL,
+        updated_at       TEXT NOT NULL,
+        deleted_at       TEXT,
+        version          INTEGER NOT NULL DEFAULT 1,
+        sync_status      TEXT NOT NULL DEFAULT 'local',
+        metadata         TEXT NOT NULL DEFAULT '{}',
+        FOREIGN KEY (farm_id) REFERENCES farms(id) ON DELETE RESTRICT,
+        FOREIGN KEY (item_id) REFERENCES inventory_items(id) ON DELETE RESTRICT,
+        FOREIGN KEY (warehouse_id) REFERENCES warehouses(id) ON DELETE SET NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_invtx_farm       ON inventory_transactions(farm_id);
+      CREATE INDEX IF NOT EXISTS idx_invtx_item       ON inventory_transactions(item_id);
+      CREATE INDEX IF NOT EXISTS idx_invtx_warehouse  ON inventory_transactions(warehouse_id);
+      CREATE INDEX IF NOT EXISTS idx_invtx_type       ON inventory_transactions(transaction_type);
+      CREATE INDEX IF NOT EXISTS idx_invtx_date       ON inventory_transactions(transaction_date);
+      CREATE INDEX IF NOT EXISTS idx_invtx_expiry     ON inventory_transactions(expiry_date);
+      CREATE INDEX IF NOT EXISTS idx_invtx_target     ON inventory_transactions(target_type, target_id);
+      CREATE INDEX IF NOT EXISTS idx_invtx_deleted    ON inventory_transactions(deleted_at);
+    `);
+  },
+};
+
 export const MIGRATIONS: readonly Migration[] = [
   initial,
   plots,
   crops,
   cropCyclesAndActivities,
   livestock,
+  inventory,
 ];
 
 export const LATEST_VERSION: number = MIGRATIONS.reduce(
