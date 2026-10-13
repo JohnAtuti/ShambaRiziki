@@ -30,6 +30,30 @@ export type { CreateFarmInput, UpdateFarmInput, FarmRepo } from "./farms";
 export { plotRepo } from "./plots";
 export type { CreatePlotInput, UpdatePlotInput, PlotRepo } from "./plots";
 
+export { cropRepo } from "./crops";
+export type { CreateCropInput, UpdateCropInput, CropRepo } from "./crops";
+
+export { cropCycleRepo } from "./cropCycles";
+export type {
+  CreateCropCycleInput,
+  UpdateCropCycleInput,
+  CropCycleRepo,
+} from "./cropCycles";
+
+export { cropActivityRepo } from "./cropActivities";
+export type {
+  CreateCropActivityInput,
+  UpdateCropActivityInput,
+  CropActivityRepo,
+} from "./cropActivities";
+
+export { attachmentRepo } from "./attachments";
+export type {
+  CreateAttachmentInput,
+  UpdateAttachmentInput,
+  AttachmentRepo,
+} from "./attachments";
+
 export { settingsRepo } from "./settings";
 export type { SettingsRepo, SettingsRow } from "./settings";
 

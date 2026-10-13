@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 
@@ -7,7 +7,7 @@ import { Screen } from "../components/Screen";
 import { BigButton } from "../components/BigButton";
 import { useAppState } from "../state/AppStateContext";
 import { useTheme } from "../theme/ThemeContext";
-import { spacing } from "../theme/colors";
+import { radius, spacing, TOUCH_TARGET } from "../theme/colors";
 import { typography } from "../theme/typography";
 import { plotRepo, type Plot } from "../db";
 import type { RootStackScreenProps } from "../navigation/types";
@@ -28,24 +28,16 @@ const keyForUse = (use: Plot["currentUse"]): string => {
   }
 };
 
-const soilKeyFor = (soil: Plot["soilType"]): string => {
-  if (!soil) return "soil_none";
-  return `soil_${soil}`;
-};
+const soilKeyFor = (soil: Plot["soilType"]): string =>
+  soil ? `soil_${soil}` : "soil_none";
 
-const fertKeyFor = (fert: Plot["fertility"]): string => {
-  if (!fert) return "not_set";
-  return `fert_${fert}`;
-};
+const fertKeyFor = (fert: Plot["fertility"]): string =>
+  fert ? `fert_${fert}` : "not_set";
 
-const slopeKeyFor = (slope: Plot["slope"]): string => {
-  if (!slope) return "not_set";
-  return `slope_${slope}`;
-};
+const slopeKeyFor = (slope: Plot["slope"]): string =>
+  slope ? `slope_${slope}` : "not_set";
 
-const tenureKeyFor = (tenure: Plot["tenureType"]): string => {
-  return `tenure_${tenure}`;
-};
+const tenureKeyFor = (tenure: Plot["tenureType"]): string => `tenure_${tenure}`;
 
 const DetailRow: React.FC<{ label: string; value: string }> = ({
   label,
@@ -104,6 +96,10 @@ export const PlotDetailScreen: React.FC<RootStackScreenProps<"PlotDetail">> = ({
 
   const onEdit = useCallback((): void => {
     navigation.navigate("PlotForm", { plotId });
+  }, [navigation, plotId]);
+
+  const onViewCycles = useCallback((): void => {
+    navigation.navigate("PlotCycles", { plotId });
   }, [navigation, plotId]);
 
   const onDelete = useCallback((): void => {
@@ -192,6 +188,32 @@ export const PlotDetailScreen: React.FC<RootStackScreenProps<"PlotDetail">> = ({
         <Text style={[styles.title, { color: colors.text }]}>{plot.name}</Text>
       </View>
 
+      <Pressable
+        onPress={onViewCycles}
+        accessibilityRole="button"
+        accessibilityLabel={t("cycles")}
+        style={({ pressed }) => [
+          styles.cyclesCard,
+          {
+            backgroundColor: colors.primary,
+            opacity: pressed ? 0.85 : 1,
+          },
+        ]}
+      >
+        <Text style={styles.cyclesIcon}>🌱</Text>
+        <View style={styles.cyclesBody}>
+          <Text style={[styles.cyclesTitle, { color: colors.onPrimary }]}>
+            {t("cycles")}
+          </Text>
+          <Text style={[styles.cyclesSub, { color: colors.onPrimary }]}>
+            {t("plot_cycles")}
+          </Text>
+        </View>
+        <Text style={[styles.cyclesChevron, { color: colors.onPrimary }]}>
+          ›
+        </Text>
+      </Pressable>
+
       <View
         style={[
           styles.card,
@@ -244,10 +266,22 @@ const styles = StyleSheet.create({
   bigIcon: { fontSize: 64 },
   emptyTitle: { ...typography.h2, textAlign: "center" },
   stretch: { alignSelf: "stretch", marginTop: spacing.lg },
-
   header: { marginBottom: spacing.lg },
   title: { ...typography.h1 },
-
+  cyclesCard: {
+    minHeight: TOUCH_TARGET + 24,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  cyclesIcon: { fontSize: 40 },
+  cyclesBody: { flex: 1, gap: 2 },
+  cyclesTitle: { ...typography.bodyBold },
+  cyclesSub: { ...typography.caption },
+  cyclesChevron: { fontSize: 32, paddingHorizontal: spacing.sm },
   card: {
     borderRadius: 20,
     borderWidth: 1.5,
@@ -261,7 +295,6 @@ const styles = StyleSheet.create({
   },
   rowLabel: { ...typography.caption },
   rowValue: { ...typography.body },
-
   footerRow: { flexDirection: "row", gap: spacing.md },
   footerButton: { flex: 1 },
 });

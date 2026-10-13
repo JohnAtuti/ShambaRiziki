@@ -26,7 +26,8 @@
     },
     "plugins": [
       "expo-localization",
-      "expo-sqlite"
+      "expo-sqlite",
+      "expo-audio"
     ],
     "extra": {
       "eas": {

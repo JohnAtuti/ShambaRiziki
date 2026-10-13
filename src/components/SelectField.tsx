@@ -27,6 +27,7 @@ type Props<T extends string> = {
   onChange: (value: T) => void;
   icon?: React.ReactNode;
   hint?: string;
+  error?: string | null;
   required?: boolean;
   placeholder?: string;
 };
@@ -38,6 +39,7 @@ export function SelectField<T extends string>({
   onChange,
   icon,
   hint,
+  error,
   required,
   placeholder,
 }: Props<T>): React.ReactElement {
@@ -46,6 +48,7 @@ export function SelectField<T extends string>({
   const [open, setOpen] = useState(false);
 
   const selected = options.find((o) => o.value === value);
+  const hasError = Boolean(error);
 
   const handleOpen = useCallback((): void => {
     Haptics.selectionAsync().catch(() => {});
@@ -84,7 +87,7 @@ export function SelectField<T extends string>({
           styles.trigger,
           {
             backgroundColor: colors.surface,
-            borderColor: colors.border,
+            borderColor: hasError ? colors.danger : colors.border,
             opacity: pressed ? 0.85 : 1,
           },
         ]}
@@ -105,6 +108,10 @@ export function SelectField<T extends string>({
         </View>
         <Text style={[styles.chevron, { color: colors.textMuted }]}>▾</Text>
       </Pressable>
+
+      {hasError ? (
+        <Text style={[styles.error, { color: colors.danger }]}>{error}</Text>
+      ) : null}
 
       <Modal
         visible={open}
@@ -159,9 +166,7 @@ export function SelectField<T extends string>({
                   <Text
                     style={[
                       styles.optionLabel,
-                      {
-                        color: isSelected ? colors.onPrimary : colors.text,
-                      },
+                      { color: isSelected ? colors.onPrimary : colors.text },
                     ]}
                   >
                     {opt.label}
@@ -210,6 +215,7 @@ const styles = StyleSheet.create({
   triggerIcon: { fontSize: 24 },
   triggerText: { ...typography.body, flex: 1 },
   chevron: { fontSize: 20, paddingHorizontal: spacing.sm },
+  error: { ...typography.caption, marginTop: spacing.xs },
   backdrop: {
     position: "absolute",
     top: 0,

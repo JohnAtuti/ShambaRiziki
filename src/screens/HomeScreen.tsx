@@ -11,7 +11,7 @@ import { radius, spacing } from "../theme/colors";
 import { typography } from "../theme/typography";
 import type { RootStackScreenProps } from "../navigation/types";
 
-type TileRoute = "Plots" | "Placeholder";
+type TileRoute = "Plots" | "Crops" | "Placeholder";
 
 type Tile = {
   key: string;
@@ -22,7 +22,7 @@ type Tile = {
 
 const TILES: readonly Tile[] = [
   { key: "plots", emoji: "🌍", color: "#6D4C41", route: "Plots" },
-  { key: "crops", emoji: "🌱", color: "#43A047", route: "Placeholder" },
+  { key: "crops", emoji: "🌱", color: "#43A047", route: "Crops" },
   { key: "livestock", emoji: "🐄", color: "#8D6E63", route: "Placeholder" },
   { key: "inventory", emoji: "📦", color: "#FB8C00", route: "Placeholder" },
   { key: "tasks", emoji: "✅", color: "#1E88E5", route: "Placeholder" },
@@ -40,6 +40,8 @@ export const HomeScreen: React.FC<RootStackScreenProps<"Home">> = ({
     (tile: Tile): void => {
       if (tile.route === "Plots") {
         navigation.navigate("Plots");
+      } else if (tile.route === "Crops") {
+        navigation.navigate("Crops");
       } else {
         navigation.navigate("Placeholder", { titleKey: tile.key });
       }

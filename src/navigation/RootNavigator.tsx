@@ -15,6 +15,12 @@ import { BootScreen } from "../screens/BootScreen";
 import { PlotsListScreen } from "../screens/PlotsListScreen";
 import { PlotDetailScreen } from "../screens/PlotDetailScreen";
 import { PlotFormScreen } from "../screens/PlotFormScreen";
+import { CropsListScreen } from "../screens/CropsListScreen";
+import { CropFormScreen } from "../screens/CropFormScreen";
+import { PlotCyclesScreen } from "../screens/PlotCyclesScreen";
+import { CycleFormScreen } from "../screens/CycleFormScreen";
+import { CycleDetailScreen } from "../screens/CycleDetailScreen";
+import { ActivityFormScreen } from "../screens/ActivityFormScreen";
 import { useTheme } from "../theme/ThemeContext";
 import { useAppState } from "../state/AppStateContext";
 
@@ -32,7 +38,6 @@ export const RootNavigator: React.FC = () => {
         navigationRef.goBack();
         return true;
       }
-
       Alert.alert(
         t("exit_title"),
         t("exit_message"),
@@ -44,7 +49,6 @@ export const RootNavigator: React.FC = () => {
       );
       return true;
     };
-
     const sub = BackHandler.addEventListener("hardwareBackPress", onBackPress);
     return () => sub.remove();
   }, [navigationRef, t]);
@@ -100,6 +104,44 @@ export const RootNavigator: React.FC = () => {
               component={PlotFormScreen}
               options={({ route }) => ({
                 title: route.params?.plotId ? t("edit_plot") : t("new_plot"),
+              })}
+            />
+            <Stack.Screen
+              name="Crops"
+              component={CropsListScreen}
+              options={{ title: t("crops") }}
+            />
+            <Stack.Screen
+              name="CropForm"
+              component={CropFormScreen}
+              options={({ route }) => ({
+                title: route.params?.cropId ? t("edit_crop") : t("new_crop"),
+              })}
+            />
+            <Stack.Screen
+              name="PlotCycles"
+              component={PlotCyclesScreen}
+              options={{ title: t("cycles") }}
+            />
+            <Stack.Screen
+              name="CycleForm"
+              component={CycleFormScreen}
+              options={({ route }) => ({
+                title: route.params?.cycleId ? t("edit_cycle") : t("new_cycle"),
+              })}
+            />
+            <Stack.Screen
+              name="CycleDetail"
+              component={CycleDetailScreen}
+              options={{ title: t("cycle_details") }}
+            />
+            <Stack.Screen
+              name="ActivityForm"
+              component={ActivityFormScreen}
+              options={({ route }) => ({
+                title: route.params?.activityId
+                  ? t("edit_activity")
+                  : t("new_activity"),
               })}
             />
             <Stack.Screen
