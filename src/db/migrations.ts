@@ -518,6 +518,84 @@ const inventory: Migration = {
   },
 };
 
+const tasks: Migration = {
+  version: 7,
+  name: "tasks",
+  up: async (db) => {
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS task_templates (
+        id                       TEXT PRIMARY KEY NOT NULL,
+        farm_id                  TEXT NOT NULL,
+        name                     TEXT NOT NULL,
+        description              TEXT,
+        task_type                TEXT NOT NULL DEFAULT 'other',
+        default_priority         TEXT NOT NULL DEFAULT 'normal',
+        default_recurrence_type  TEXT NOT NULL DEFAULT 'none',
+        default_due_offset_days  INTEGER,
+        default_target_type      TEXT,
+        estimated_hours          REAL,
+        is_active                INTEGER NOT NULL DEFAULT 1,
+        notes                    TEXT,
+        created_at               TEXT NOT NULL,
+        updated_at               TEXT NOT NULL,
+        deleted_at               TEXT,
+        version                  INTEGER NOT NULL DEFAULT 1,
+        sync_status              TEXT NOT NULL DEFAULT 'local',
+        metadata                 TEXT NOT NULL DEFAULT '{}',
+        FOREIGN KEY (farm_id) REFERENCES farms(id) ON DELETE RESTRICT
+      );
+      CREATE INDEX IF NOT EXISTS idx_templates_farm    ON task_templates(farm_id);
+      CREATE INDEX IF NOT EXISTS idx_templates_type    ON task_templates(task_type);
+      CREATE INDEX IF NOT EXISTS idx_templates_active  ON task_templates(is_active);
+      CREATE INDEX IF NOT EXISTS idx_templates_deleted ON task_templates(deleted_at);
+
+      CREATE TABLE IF NOT EXISTS tasks (
+        id                    TEXT PRIMARY KEY NOT NULL,
+        farm_id               TEXT NOT NULL,
+        template_id           TEXT,
+        title                 TEXT NOT NULL,
+        description           TEXT,
+        task_type             TEXT NOT NULL DEFAULT 'other',
+        priority              TEXT NOT NULL DEFAULT 'normal',
+        status                TEXT NOT NULL DEFAULT 'pending',
+        due_date              TEXT NOT NULL,
+        scheduled_start       TEXT,
+        completed_at          TEXT,
+        completed_by          TEXT,
+        assigned_to           TEXT,
+        recurrence_type       TEXT NOT NULL DEFAULT 'none',
+        recurrence_parent_id  TEXT,
+        occurrence_index      INTEGER,
+        target_type           TEXT,
+        target_id             TEXT,
+        target_label          TEXT,
+        estimated_hours       REAL,
+        actual_hours          REAL,
+        notes                 TEXT,
+        created_at            TEXT NOT NULL,
+        updated_at            TEXT NOT NULL,
+        deleted_at            TEXT,
+        version               INTEGER NOT NULL DEFAULT 1,
+        sync_status           TEXT NOT NULL DEFAULT 'local',
+        metadata              TEXT NOT NULL DEFAULT '{}',
+        FOREIGN KEY (farm_id) REFERENCES farms(id) ON DELETE RESTRICT,
+        FOREIGN KEY (template_id) REFERENCES task_templates(id) ON DELETE SET NULL,
+        FOREIGN KEY (completed_by) REFERENCES users(id) ON DELETE SET NULL,
+        FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL,
+        FOREIGN KEY (recurrence_parent_id) REFERENCES tasks(id) ON DELETE SET NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_tasks_farm     ON tasks(farm_id);
+      CREATE INDEX IF NOT EXISTS idx_tasks_status   ON tasks(status);
+      CREATE INDEX IF NOT EXISTS idx_tasks_due      ON tasks(due_date);
+      CREATE INDEX IF NOT EXISTS idx_tasks_assigned ON tasks(assigned_to);
+      CREATE INDEX IF NOT EXISTS idx_tasks_target   ON tasks(target_type, target_id);
+      CREATE INDEX IF NOT EXISTS idx_tasks_parent   ON tasks(recurrence_parent_id);
+      CREATE INDEX IF NOT EXISTS idx_tasks_template ON tasks(template_id);
+      CREATE INDEX IF NOT EXISTS idx_tasks_deleted  ON tasks(deleted_at);
+    `);
+  },
+};
+
 export const MIGRATIONS: readonly Migration[] = [
   initial,
   plots,
@@ -525,6 +603,7 @@ export const MIGRATIONS: readonly Migration[] = [
   cropCyclesAndActivities,
   livestock,
   inventory,
+  tasks,
 ];
 
 export const LATEST_VERSION: number = MIGRATIONS.reduce(

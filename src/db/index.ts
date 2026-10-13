@@ -5,6 +5,14 @@ export { getDb, closeDb } from "./client";
 export { newId } from "./id";
 export { nowIso, isoDaysAgo } from "./time";
 
+// Recurrence helpers (used by task repo but also useful for calendar UI)
+export {
+  generateOccurrences,
+  occurrenceDate,
+  isRecurring,
+  MAX_OCCURRENCES,
+} from "./recurrence";
+
 // Errors
 export { DbError, NotFoundError, ValidationError } from "./errors";
 
@@ -20,7 +28,7 @@ export {
   serialiseMetadata,
 } from "./repository";
 
-// Repos — existing
+// Repos — users, farms, plots, crops
 export { userRepo, findSoleOwner } from "./users";
 export type { CreateUserInput, UpdateUserInput, UserRepo } from "./users";
 
@@ -54,6 +62,7 @@ export type {
   AttachmentRepo,
 } from "./attachments";
 
+// Repos — livestock
 export { herdRepo } from "./herds";
 export type { CreateHerdInput, UpdateHerdInput, HerdRepo } from "./herds";
 
@@ -92,7 +101,7 @@ export type {
   AnimalProductionRepo,
 } from "./animalProduction";
 
-// Repos — inventory (new)
+// Repos — inventory
 export { warehouseRepo } from "./warehouses";
 export type {
   CreateWarehouseInput,
@@ -117,6 +126,23 @@ export type {
   ExpiringBatch,
 } from "./inventoryTransactions";
 
+// Repos — tasks
+export { taskTemplateRepo } from "./taskTemplates";
+export type {
+  CreateTemplateInput,
+  UpdateTemplateInput,
+  TaskTemplateRepo,
+} from "./taskTemplates";
+
+export { taskRepo } from "./tasks";
+export type {
+  CreateTaskInput,
+  UpdateTaskInput,
+  CompleteTaskInput,
+  TaskRepo,
+} from "./tasks";
+
+// Settings
 export { settingsRepo } from "./settings";
 export type { SettingsRepo, SettingsRow } from "./settings";
 

@@ -49,10 +49,21 @@ export type RootStackParamList = {
   Items: undefined;
   ItemForm: { itemId?: string };
   ItemDetail: { itemId: string };
-  TransactionForm: {
-    itemId?: string;
-    transactionId?: string;
+  TransactionForm: { itemId?: string; transactionId?: string };
+
+  // Tasks
+  Tasks: undefined;
+  TaskForm: {
+    taskId?: string;
+    templateId?: string;
+    defaultTargetType?: string;
+    defaultTargetId?: string;
+    defaultTargetLabel?: string;
   };
+  TaskDetail: { taskId: string };
+  TaskTemplates: undefined;
+  TaskTemplateForm: { templateId?: string };
+  Calendar: undefined;
 
   // Placeholder
   Placeholder: { titleKey: string };

@@ -147,8 +147,6 @@ export type ProductionType =
   | "meat"
   | "other";
 
-// Inventory enums
-
 export type ItemCategory =
   | "seed"
   | "fertilizer"
@@ -162,12 +160,12 @@ export type ItemCategory =
   | "other";
 
 export type InventoryTransactionType =
-  | "purchase" // stock in, from a supplier
-  | "issue" // stock out, consumed by a plot/animal/worker
-  | "return" // stock in, returned from a plot/animal/worker
-  | "adjustment_in" // stock in, correction or found stock
-  | "adjustment_out" // stock out, loss, theft, spoilage
-  | "stocktake"; // balance set point at a physical count; sign via delta
+  | "purchase"
+  | "issue"
+  | "return"
+  | "adjustment_in"
+  | "adjustment_out"
+  | "stocktake";
 
 export type InventoryTargetType =
   | "plot"
@@ -175,6 +173,46 @@ export type InventoryTargetType =
   | "herd"
   | "crop_cycle"
   | "worker"
+  | "other";
+
+// Tasks enums
+
+export type TaskType =
+  | "field_work" // generic crop work: weeding, thinning, scouting
+  | "planting"
+  | "fertilizer"
+  | "pesticide"
+  | "irrigation"
+  | "harvest"
+  | "livestock_care" // feeding, watering, cleaning
+  | "health_check" // vaccination, deworming, vet visit
+  | "breeding"
+  | "production" // milking, egg collection
+  | "inventory_check"
+  | "maintenance"
+  | "admin"
+  | "meeting"
+  | "other";
+
+export type TaskPriority = "low" | "normal" | "high" | "urgent";
+
+export type TaskStatus = "pending" | "in_progress" | "completed" | "cancelled";
+
+export type RecurrenceType =
+  | "none"
+  | "daily"
+  | "weekly"
+  | "biweekly"
+  | "monthly"
+  | "seasonal"
+  | "yearly";
+
+export type TaskTargetType =
+  | "plot"
+  | "crop_cycle"
+  | "animal"
+  | "herd"
+  | "item"
   | "other";
 
 // ---------------------------------------------------------------------------
@@ -416,6 +454,44 @@ export interface InventoryTransaction extends BaseEntity {
   targetType: InventoryTargetType | null;
   targetId: string | null;
   targetLabel: string | null;
+  notes: string | null;
+}
+
+export interface TaskTemplate extends BaseEntity {
+  farmId: string;
+  name: string;
+  description: string | null;
+  taskType: TaskType;
+  defaultPriority: TaskPriority;
+  defaultRecurrenceType: RecurrenceType;
+  defaultDueOffsetDays: number | null;
+  defaultTargetType: TaskTargetType | null;
+  estimatedHours: number | null;
+  isActive: boolean;
+  notes: string | null;
+}
+
+export interface Task extends BaseEntity {
+  farmId: string;
+  templateId: string | null;
+  title: string;
+  description: string | null;
+  taskType: TaskType;
+  priority: TaskPriority;
+  status: TaskStatus;
+  dueDate: string;
+  scheduledStart: string | null;
+  completedAt: string | null;
+  completedBy: string | null;
+  assignedTo: string | null;
+  recurrenceType: RecurrenceType;
+  recurrenceParentId: string | null;
+  occurrenceIndex: number | null;
+  targetType: TaskTargetType | null;
+  targetId: string | null;
+  targetLabel: string | null;
+  estimatedHours: number | null;
+  actualHours: number | null;
   notes: string | null;
 }
 
@@ -762,6 +838,58 @@ export interface InventoryTransactionRow {
   target_type: string | null;
   target_id: string | null;
   target_label: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  version: number;
+  sync_status: string;
+  metadata: string;
+}
+
+export interface TaskTemplateRow {
+  id: string;
+  farm_id: string;
+  name: string;
+  description: string | null;
+  task_type: string;
+  default_priority: string;
+  default_recurrence_type: string;
+  default_due_offset_days: number | null;
+  default_target_type: string | null;
+  estimated_hours: number | null;
+  is_active: number;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  version: number;
+  sync_status: string;
+  metadata: string;
+}
+
+export interface TaskRow {
+  id: string;
+  farm_id: string;
+  template_id: string | null;
+  title: string;
+  description: string | null;
+  task_type: string;
+  priority: string;
+  status: string;
+  due_date: string;
+  scheduled_start: string | null;
+  completed_at: string | null;
+  completed_by: string | null;
+  assigned_to: string | null;
+  recurrence_type: string;
+  recurrence_parent_id: string | null;
+  occurrence_index: number | null;
+  target_type: string | null;
+  target_id: string | null;
+  target_label: string | null;
+  estimated_hours: number | null;
+  actual_hours: number | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -1134,6 +1262,58 @@ export const mapInventoryTransactionRow = (
   targetType: (row.target_type as InventoryTargetType | null) ?? null,
   targetId: row.target_id,
   targetLabel: row.target_label,
+  notes: row.notes,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+  deletedAt: row.deleted_at,
+  version: row.version,
+  syncStatus: row.sync_status as SyncStatus,
+  metadata: safeParseObject(row.metadata),
+});
+
+export const mapTaskTemplateRow = (row: TaskTemplateRow): TaskTemplate => ({
+  id: row.id,
+  farmId: row.farm_id,
+  name: row.name,
+  description: row.description,
+  taskType: row.task_type as TaskType,
+  defaultPriority: row.default_priority as TaskPriority,
+  defaultRecurrenceType: row.default_recurrence_type as RecurrenceType,
+  defaultDueOffsetDays: row.default_due_offset_days,
+  defaultTargetType: (row.default_target_type as TaskTargetType | null) ?? null,
+  estimatedHours: row.estimated_hours,
+  isActive: row.is_active === 1,
+  notes: row.notes,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+  deletedAt: row.deleted_at,
+  version: row.version,
+  syncStatus: row.sync_status as SyncStatus,
+  metadata: safeParseObject(row.metadata),
+});
+
+export const mapTaskRow = (row: TaskRow): Task => ({
+  id: row.id,
+  farmId: row.farm_id,
+  templateId: row.template_id,
+  title: row.title,
+  description: row.description,
+  taskType: row.task_type as TaskType,
+  priority: row.priority as TaskPriority,
+  status: row.status as TaskStatus,
+  dueDate: row.due_date,
+  scheduledStart: row.scheduled_start,
+  completedAt: row.completed_at,
+  completedBy: row.completed_by,
+  assignedTo: row.assigned_to,
+  recurrenceType: row.recurrence_type as RecurrenceType,
+  recurrenceParentId: row.recurrence_parent_id,
+  occurrenceIndex: row.occurrence_index,
+  targetType: (row.target_type as TaskTargetType | null) ?? null,
+  targetId: row.target_id,
+  targetLabel: row.target_label,
+  estimatedHours: row.estimated_hours,
+  actualHours: row.actual_hours,
   notes: row.notes,
   createdAt: row.created_at,
   updatedAt: row.updated_at,

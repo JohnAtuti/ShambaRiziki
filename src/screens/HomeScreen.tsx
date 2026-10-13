@@ -11,7 +11,13 @@ import { radius, spacing } from "../theme/colors";
 import { typography } from "../theme/typography";
 import type { RootStackScreenProps } from "../navigation/types";
 
-type TileRoute = "Plots" | "Crops" | "Livestock" | "Inventory" | "Placeholder";
+type TileRoute =
+  | "Plots"
+  | "Crops"
+  | "Livestock"
+  | "Inventory"
+  | "Tasks"
+  | "Placeholder";
 
 type Tile = {
   key: string;
@@ -25,7 +31,7 @@ const TILES: readonly Tile[] = [
   { key: "crops", emoji: "🌱", color: "#43A047", route: "Crops" },
   { key: "livestock", emoji: "🐄", color: "#8D6E63", route: "Livestock" },
   { key: "inventory", emoji: "📦", color: "#FB8C00", route: "Inventory" },
-  { key: "tasks", emoji: "✅", color: "#1E88E5", route: "Placeholder" },
+  { key: "tasks", emoji: "✅", color: "#1E88E5", route: "Tasks" },
   { key: "money", emoji: "💰", color: "#FDD835", route: "Placeholder" },
   { key: "reports", emoji: "📊", color: "#8E24AA", route: "Placeholder" },
 ];
@@ -42,6 +48,7 @@ export const HomeScreen: React.FC<RootStackScreenProps<"Home">> = ({
       else if (tile.route === "Crops") navigation.navigate("Crops");
       else if (tile.route === "Livestock") navigation.navigate("Livestock");
       else if (tile.route === "Inventory") navigation.navigate("Inventory");
+      else if (tile.route === "Tasks") navigation.navigate("Tasks");
       else navigation.navigate("Placeholder", { titleKey: tile.key });
     },
     [navigation],

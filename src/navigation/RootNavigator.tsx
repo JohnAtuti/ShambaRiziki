@@ -1,6 +1,5 @@
 import React, { useEffect } from "react";
 import { Alert, BackHandler } from "react-native";
-
 import {
   NavigationContainer,
   useNavigationContainerRef,
@@ -40,6 +39,12 @@ import { ItemsListScreen } from "../screens/ItemsListScreen";
 import { ItemFormScreen } from "../screens/ItemFormScreen";
 import { ItemDetailScreen } from "../screens/ItemDetailScreen";
 import { TransactionFormScreen } from "../screens/TransactionFormScreen";
+import { TasksScreen } from "../screens/TasksScreen";
+import { TaskFormScreen } from "../screens/TaskFormScreen";
+import { TaskDetailScreen } from "../screens/TaskDetailScreen";
+import { TaskTemplatesScreen } from "../screens/TaskTemplatesScreen";
+import { TaskTemplateFormScreen } from "../screens/TaskTemplateFormScreen";
+import { CalendarScreen } from "../screens/CalendarScreen";
 import { useTheme } from "../theme/ThemeContext";
 import { useAppState } from "../state/AppStateContext";
 
@@ -294,6 +299,44 @@ export const RootNavigator: React.FC = () => {
                   ? t("edit_transaction")
                   : t("new_transaction"),
               })}
+            />
+
+            {/* Tasks */}
+            <Stack.Screen
+              name="Tasks"
+              component={TasksScreen}
+              options={{ title: t("tasks_title") }}
+            />
+            <Stack.Screen
+              name="TaskForm"
+              component={TaskFormScreen}
+              options={({ route }) => ({
+                title: route.params?.taskId ? t("edit_task") : t("new_task"),
+              })}
+            />
+            <Stack.Screen
+              name="TaskDetail"
+              component={TaskDetailScreen}
+              options={{ title: t("task_details") }}
+            />
+            <Stack.Screen
+              name="TaskTemplates"
+              component={TaskTemplatesScreen}
+              options={{ title: t("task_templates") }}
+            />
+            <Stack.Screen
+              name="TaskTemplateForm"
+              component={TaskTemplateFormScreen}
+              options={({ route }) => ({
+                title: route.params?.templateId
+                  ? t("edit_template")
+                  : t("new_template"),
+              })}
+            />
+            <Stack.Screen
+              name="Calendar"
+              component={CalendarScreen}
+              options={{ title: t("calendar_title") }}
             />
 
             <Stack.Screen
