@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------------
-// Enums — kept in TypeScript only. Adding a new value never requires a DB
-// migration because the DB stores plain TEXT with no CHECK constraints.
+// Enums — TypeScript only. Adding a value never requires a DB migration
+// because the DB stores plain TEXT with no CHECK constraints.
 // ---------------------------------------------------------------------------
 
 export type Role =
@@ -23,6 +23,20 @@ export type FarmType =
 export type SizeUnit = "acre" | "hectare";
 export type Language = "en" | "sw";
 export type Currency = "KES" | "TZS" | "UGX" | "USD" | "EUR";
+
+export type SoilType =
+  | "clay"
+  | "sandy"
+  | "loam"
+  | "silt"
+  | "peat"
+  | "chalk"
+  | "other";
+
+export type Fertility = "low" | "medium" | "high";
+export type Slope = "flat" | "gentle" | "moderate" | "steep";
+export type TenureType = "owned" | "leased" | "rented" | "communal";
+export type PlotUse = "crops" | "livestock" | "fallow" | "mixed" | "none";
 
 // ---------------------------------------------------------------------------
 // Base entity — every table inherits these columns verbatim.
@@ -69,6 +83,21 @@ export interface Farm extends BaseEntity {
   isActive: boolean;
 }
 
+export interface Plot extends BaseEntity {
+  farmId: string;
+  name: string;
+  size: number | null;
+  sizeUnit: SizeUnit;
+  locationText: string | null;
+  soilType: SoilType | null;
+  soilPh: number | null;
+  fertility: Fertility | null;
+  slope: Slope | null;
+  tenureType: TenureType;
+  currentUse: PlotUse;
+  notes: string | null;
+}
+
 export type AuditAction = "create" | "update" | "delete" | "restore";
 
 export interface AuditLogEntry {
@@ -83,7 +112,6 @@ export interface AuditLogEntry {
 
 // ---------------------------------------------------------------------------
 // Row shapes — exactly what SQLite returns (snake_case, ints for booleans).
-// Mappers below convert rows into domain entities.
 // ---------------------------------------------------------------------------
 
 export interface UserRow {
@@ -119,6 +147,28 @@ export interface FarmRow {
   tax_rate: number;
   language: string;
   is_active: number;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  version: number;
+  sync_status: string;
+  metadata: string;
+}
+
+export interface PlotRow {
+  id: string;
+  farm_id: string;
+  name: string;
+  size: number | null;
+  size_unit: string;
+  location_text: string | null;
+  soil_type: string | null;
+  soil_ph: number | null;
+  fertility: string | null;
+  slope: string | null;
+  tenure_type: string;
+  current_use: string;
+  notes: string | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -186,6 +236,28 @@ export const mapFarmRow = (row: FarmRow): Farm => ({
   taxRate: row.tax_rate,
   language: row.language as Language,
   isActive: row.is_active === 1,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+  deletedAt: row.deleted_at,
+  version: row.version,
+  syncStatus: row.sync_status as SyncStatus,
+  metadata: safeParseObject(row.metadata),
+});
+
+export const mapPlotRow = (row: PlotRow): Plot => ({
+  id: row.id,
+  farmId: row.farm_id,
+  name: row.name,
+  size: row.size,
+  sizeUnit: row.size_unit as SizeUnit,
+  locationText: row.location_text,
+  soilType: (row.soil_type as SoilType | null) ?? null,
+  soilPh: row.soil_ph,
+  fertility: (row.fertility as Fertility | null) ?? null,
+  slope: (row.slope as Slope | null) ?? null,
+  tenureType: row.tenure_type as TenureType,
+  currentUse: row.current_use as PlotUse,
+  notes: row.notes,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
   deletedAt: row.deleted_at,

@@ -8,7 +8,7 @@ export { nowIso, isoDaysAgo } from "./time";
 // Errors — all data-layer failures are one of these
 export { DbError, NotFoundError, ValidationError } from "./errors";
 
-// PIN hashing (used by the auth flow later)
+// PIN hashing
 export { hashPin, verifyPin, type PinHash } from "./pin";
 
 // Repository context & audit helpers
@@ -26,6 +26,9 @@ export type { CreateUserInput, UpdateUserInput, UserRepo } from "./users";
 
 export { farmRepo } from "./farms";
 export type { CreateFarmInput, UpdateFarmInput, FarmRepo } from "./farms";
+
+export { plotRepo } from "./plots";
+export type { CreatePlotInput, UpdatePlotInput, PlotRepo } from "./plots";
 
 export { settingsRepo } from "./settings";
 export type { SettingsRepo, SettingsRow } from "./settings";

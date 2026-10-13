@@ -11,15 +11,23 @@ import { radius, spacing } from "../theme/colors";
 import { typography } from "../theme/typography";
 import type { RootStackScreenProps } from "../navigation/types";
 
-type Tile = { key: string; emoji: string; color: string };
+type TileRoute = "Plots" | "Placeholder";
+
+type Tile = {
+  key: string;
+  emoji: string;
+  color: string;
+  route: TileRoute;
+};
 
 const TILES: readonly Tile[] = [
-  { key: "livestock", emoji: "🐄", color: "#8D6E63" },
-  { key: "crops", emoji: "🌱", color: "#43A047" },
-  { key: "inventory", emoji: "📦", color: "#FB8C00" },
-  { key: "money", emoji: "💰", color: "#FDD835" },
-  { key: "tasks", emoji: "✅", color: "#1E88E5" },
-  { key: "reports", emoji: "📊", color: "#8E24AA" },
+  { key: "plots", emoji: "🌍", color: "#6D4C41", route: "Plots" },
+  { key: "crops", emoji: "🌱", color: "#43A047", route: "Placeholder" },
+  { key: "livestock", emoji: "🐄", color: "#8D6E63", route: "Placeholder" },
+  { key: "inventory", emoji: "📦", color: "#FB8C00", route: "Placeholder" },
+  { key: "tasks", emoji: "✅", color: "#1E88E5", route: "Placeholder" },
+  { key: "money", emoji: "💰", color: "#FDD835", route: "Placeholder" },
+  { key: "reports", emoji: "📊", color: "#8E24AA", route: "Placeholder" },
 ];
 
 export const HomeScreen: React.FC<RootStackScreenProps<"Home">> = ({
@@ -29,8 +37,12 @@ export const HomeScreen: React.FC<RootStackScreenProps<"Home">> = ({
   const { colors } = useTheme();
 
   const openTile = useCallback(
-    (titleKey: string): void => {
-      navigation.navigate("Placeholder", { titleKey });
+    (tile: Tile): void => {
+      if (tile.route === "Plots") {
+        navigation.navigate("Plots");
+      } else {
+        navigation.navigate("Placeholder", { titleKey: tile.key });
+      }
     },
     [navigation],
   );
@@ -59,7 +71,7 @@ export const HomeScreen: React.FC<RootStackScreenProps<"Home">> = ({
               layout="column"
               variant="secondary"
               label={t(tile.key)}
-              onPress={() => openTile(tile.key)}
+              onPress={() => openTile(tile)}
               style={styles.tile}
               icon={
                 <View

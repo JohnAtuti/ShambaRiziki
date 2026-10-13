@@ -7,9 +7,7 @@ export type Migration = {
 };
 
 // ---------------------------------------------------------------------------
-// Migration 001 — initial schema
-//
-// Rules for every future migration:
+// Migration rules (unchanged from v1):
 //   1. Never edit an existing migration. Add a new one.
 //   2. Never DROP a column. Add a new one, migrate data, leave the old one.
 //   3. Never use ON DELETE CASCADE. Use ON DELETE SET NULL or RESTRICT.
@@ -93,7 +91,42 @@ const initial: Migration = {
   },
 };
 
-export const MIGRATIONS: readonly Migration[] = [initial];
+const plots: Migration = {
+  version: 2,
+  name: "plots",
+  up: async (db) => {
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS plots (
+        id              TEXT PRIMARY KEY NOT NULL,
+        farm_id         TEXT NOT NULL,
+        name            TEXT NOT NULL,
+        size            REAL,
+        size_unit       TEXT NOT NULL DEFAULT 'acre',
+        location_text   TEXT,
+        soil_type       TEXT,
+        soil_ph         REAL,
+        fertility       TEXT,
+        slope           TEXT,
+        tenure_type     TEXT NOT NULL DEFAULT 'owned',
+        current_use     TEXT NOT NULL DEFAULT 'none',
+        notes           TEXT,
+        created_at      TEXT NOT NULL,
+        updated_at      TEXT NOT NULL,
+        deleted_at      TEXT,
+        version         INTEGER NOT NULL DEFAULT 1,
+        sync_status     TEXT NOT NULL DEFAULT 'local',
+        metadata        TEXT NOT NULL DEFAULT '{}',
+        FOREIGN KEY (farm_id) REFERENCES farms(id) ON DELETE RESTRICT
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_plots_farm    ON plots(farm_id);
+      CREATE INDEX IF NOT EXISTS idx_plots_deleted ON plots(deleted_at);
+      CREATE INDEX IF NOT EXISTS idx_plots_use     ON plots(current_use);
+    `);
+  },
+};
+
+export const MIGRATIONS: readonly Migration[] = [initial, plots];
 
 export const LATEST_VERSION: number = MIGRATIONS.reduce(
   (max, m) => (m.version > max ? m.version : max),

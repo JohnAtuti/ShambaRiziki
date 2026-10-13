@@ -1,10 +1,9 @@
 /**
  * Runtime verification of the data layer.
  *
- * Runs in __DEV__ only. Creates a temporary farm + user, exercises every
- * CRUD path, then hard-deletes the test rows via raw SQL (the app code
- * cannot do a hard delete — this file is the one exception, and it's
- * dev-only).
+ * Runs in __DEV__ only. Creates a temporary farm + user + plot, exercises
+ * every CRUD path, then hard-deletes the test rows via raw SQL (the app
+ * code cannot do a hard delete — this file is the one exception, dev-only).
  *
  * The test farm is created and immediately set to is_active=0 so that a
  * concurrently-running AppStateProvider query for the active farm can
@@ -15,6 +14,7 @@ import type { SQLiteDatabase } from "expo-sqlite";
 
 import { getDb } from "./client";
 import { farmRepo } from "./farms";
+import { plotRepo } from "./plots";
 import { userRepo } from "./users";
 import { settingsRepo } from "./settings";
 import type { RepoContext } from "./repository";
@@ -25,6 +25,7 @@ const cleanPriorRuns = async (db: SQLiteDatabase): Promise<void> => {
   await db.runAsync(`DELETE FROM audit_log WHERE entity_id LIKE ?`, [
     `${TEST_PREFIX}%`,
   ]);
+  await db.runAsync(`DELETE FROM plots WHERE name LIKE ?`, [`${TEST_PREFIX}%`]);
   await db.runAsync(`DELETE FROM farms WHERE name LIKE ?`, [`${TEST_PREFIX}%`]);
   await db.runAsync(`DELETE FROM users WHERE name LIKE ?`, [`${TEST_PREFIX}%`]);
   await db.runAsync(`DELETE FROM app_settings WHERE key LIKE ?`, [
@@ -47,7 +48,7 @@ export const runSmokeTest = async (): Promise<void> => {
     sizeUnit: "acre",
     farmType: "crops",
   });
-  // Deactivate so AppStateProvider can never pick this up as the active farm.
+  // Deactivate so AppStateProvider can never pick this up as active.
   await farmRepo.update(ctx, farm.id, { isActive: false });
 
   const updatedFarm = await farmRepo.update(ctx, farm.id, {
@@ -58,14 +59,61 @@ export const runSmokeTest = async (): Promise<void> => {
     throw new Error("farm.update did not persist size");
 
   await farmRepo.softDelete(ctx, farm.id);
-  const afterDelete = await farmRepo.getById(ctx, farm.id);
-  if (afterDelete !== null) throw new Error("farm.softDelete did not hide row");
+  const afterFarmDelete = await farmRepo.getById(ctx, farm.id);
+  if (afterFarmDelete !== null)
+    throw new Error("farm.softDelete did not hide row");
 
   await farmRepo.restore(ctx, farm.id);
-  const afterRestore = await farmRepo.getById(ctx, farm.id);
-  if (!afterRestore) throw new Error("farm.restore did not bring row back");
+  const afterFarmRestore = await farmRepo.getById(ctx, farm.id);
+  if (!afterFarmRestore) throw new Error("farm.restore did not bring row back");
 
-  // 2. User lifecycle + PIN --------------------------------------------------
+  // 2. Plot lifecycle --------------------------------------------------------
+  const plot = await plotRepo.create(ctx, {
+    farmId: farm.id,
+    name: `${TEST_PREFIX}plot`,
+    size: 2,
+    sizeUnit: "acre",
+    soilType: "loam",
+    soilPh: 6.5,
+    fertility: "medium",
+    slope: "flat",
+    tenureType: "owned",
+    currentUse: "crops",
+  });
+
+  const plotsInFarm = await plotRepo.listByFarm(ctx, farm.id);
+  if (plotsInFarm.length !== 1) {
+    throw new Error(`expected 1 plot, got ${plotsInFarm.length}`);
+  }
+
+  const updatedPlot = await plotRepo.update(ctx, plot.id, {
+    name: `${TEST_PREFIX}plot-updated`,
+    size: 3,
+    soilPh: 6.8,
+  });
+  if (updatedPlot.size !== 3)
+    throw new Error("plot.update did not persist size");
+  if (updatedPlot.soilPh !== 6.8) {
+    throw new Error("plot.update did not persist soilPh");
+  }
+  if (updatedPlot.version !== 2)
+    throw new Error("plot.update did not bump version");
+
+  await plotRepo.softDelete(ctx, plot.id);
+  const afterPlotDelete = await plotRepo.getById(ctx, plot.id);
+  if (afterPlotDelete !== null)
+    throw new Error("plot.softDelete did not hide row");
+
+  const countAfterDelete = await plotRepo.countByFarm(ctx, farm.id);
+  if (countAfterDelete !== 0) {
+    throw new Error(`expected 0 plots after delete, got ${countAfterDelete}`);
+  }
+
+  await plotRepo.restore(ctx, plot.id);
+  const afterPlotRestore = await plotRepo.getById(ctx, plot.id);
+  if (!afterPlotRestore) throw new Error("plot.restore did not bring row back");
+
+  // 3. User lifecycle + PIN --------------------------------------------------
   const user = await userRepo.create(ctx, {
     name: `${TEST_PREFIX}user`,
     role: "owner",
@@ -76,7 +124,7 @@ export const runSmokeTest = async (): Promise<void> => {
   const pinBad = await userRepo.verifyPin(ctx, user.id, "0000");
   if (pinBad) throw new Error("userRepo.verifyPin accepted wrong PIN");
 
-  // 3. Settings --------------------------------------------------------------
+  // 4. Settings --------------------------------------------------------------
   await settingsRepo.set(ctx, `${TEST_PREFIX}flag`, { a: 1, b: "x" });
   const flag = await settingsRepo.get<{ a: number; b: string }>(
     ctx,
@@ -87,18 +135,28 @@ export const runSmokeTest = async (): Promise<void> => {
   }
   await settingsRepo.remove(ctx, `${TEST_PREFIX}flag`);
 
-  // 4. Audit log -------------------------------------------------------------
-  const auditRow = await db.getFirstAsync<{ count: number }>(
+  // 5. Audit log -------------------------------------------------------------
+  const farmAudit = await db.getFirstAsync<{ count: number }>(
     `SELECT COUNT(*) as count FROM audit_log WHERE entity_id = ?`,
     [farm.id],
   );
-  if (!auditRow || auditRow.count < 5) {
+  if (!farmAudit || farmAudit.count < 5) {
     throw new Error(
-      `expected >= 5 audit rows for farm, got ${auditRow?.count ?? 0}`,
+      `expected >= 5 audit rows for farm, got ${farmAudit?.count ?? 0}`,
     );
   }
 
-  // 5. Cleanup ---------------------------------------------------------------
+  const plotAudit = await db.getFirstAsync<{ count: number }>(
+    `SELECT COUNT(*) as count FROM audit_log WHERE entity_id = ?`,
+    [plot.id],
+  );
+  if (!plotAudit || plotAudit.count < 4) {
+    throw new Error(
+      `expected >= 4 audit rows for plot, got ${plotAudit?.count ?? 0}`,
+    );
+  }
+
+  // 6. Cleanup ---------------------------------------------------------------
   await cleanPriorRuns(db);
 
   console.log("[db] ✅ smoke test passed");

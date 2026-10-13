@@ -12,6 +12,9 @@ import { HomeScreen } from "../screens/HomeScreen";
 import { PlaceholderScreen } from "../screens/PlaceholderScreen";
 import { FarmSetupScreen } from "../screens/FarmSetupScreen";
 import { BootScreen } from "../screens/BootScreen";
+import { PlotsListScreen } from "../screens/PlotsListScreen";
+import { PlotDetailScreen } from "../screens/PlotDetailScreen";
+import { PlotFormScreen } from "../screens/PlotFormScreen";
 import { useTheme } from "../theme/ThemeContext";
 import { useAppState } from "../state/AppStateContext";
 
@@ -81,6 +84,23 @@ export const RootNavigator: React.FC = () => {
               name="Home"
               component={HomeScreen}
               options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Plots"
+              component={PlotsListScreen}
+              options={{ title: t("plots") }}
+            />
+            <Stack.Screen
+              name="PlotDetail"
+              component={PlotDetailScreen}
+              options={{ title: t("plot_details") }}
+            />
+            <Stack.Screen
+              name="PlotForm"
+              component={PlotFormScreen}
+              options={({ route }) => ({
+                title: route.params?.plotId ? t("edit_plot") : t("new_plot"),
+              })}
             />
             <Stack.Screen
               name="Placeholder"
