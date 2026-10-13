@@ -45,9 +45,7 @@ export const AppStateProvider: React.FC<{ children: ReactNode }> = ({
   const [currentUser, setCurrentUserState] = useState<User | null>(null);
   const [settings, setSettings] = useState<Record<string, unknown>>({});
 
-  const bootstrap = useCallback(async (): Promise<void> => {
-    setStatus("loading");
-    setError(null);
+  const loadData = useCallback(async (): Promise<void> => {
     try {
       const db = await getDb();
       const repoCtx: RepoContext = { db, currentUserId: null };
@@ -60,6 +58,7 @@ export const AppStateProvider: React.FC<{ children: ReactNode }> = ({
       setCtx(repoCtx);
       setActiveFarm(farm);
       setSettings(loadedSettings);
+      setError(null);
       setStatus("ready");
     } catch (err) {
       const wrapped = err instanceof Error ? err : new DbError(String(err));
@@ -69,8 +68,19 @@ export const AppStateProvider: React.FC<{ children: ReactNode }> = ({
   }, []);
 
   useEffect(() => {
-    void bootstrap();
-  }, [bootstrap]);
+    // Every setState in loadData happens after the first `await`.
+    // The react-hooks/set-state-in-effect rule cannot see through
+    // the async boundary and flags the call chain as a synchronous
+    // mutation. This is a known false positive for async bootstrap.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadData();
+  }, [loadData]);
+
+  const reload = useCallback(async (): Promise<void> => {
+    setStatus("loading");
+    setError(null);
+    await loadData();
+  }, [loadData]);
 
   const refreshActiveFarm = useCallback(async (): Promise<void> => {
     if (!ctx) return;
@@ -111,7 +121,7 @@ export const AppStateProvider: React.FC<{ children: ReactNode }> = ({
       activeFarm,
       currentUser,
       settings,
-      reload: bootstrap,
+      reload,
       refreshActiveFarm,
       refreshSettings,
       setCurrentUser,
@@ -123,7 +133,7 @@ export const AppStateProvider: React.FC<{ children: ReactNode }> = ({
       activeFarm,
       currentUser,
       settings,
-      bootstrap,
+      reload,
       refreshActiveFarm,
       refreshSettings,
       setCurrentUser,
