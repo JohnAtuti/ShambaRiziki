@@ -7,6 +7,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import "./src/i18n";
 import { ErrorBoundary } from "./src/components/ErrorBoundary";
 import { ThemeProvider, useTheme } from "./src/theme/ThemeContext";
+import { AppStateProvider } from "./src/state/AppStateContext";
 import { RootNavigator } from "./src/navigation/RootNavigator";
 import { runSmokeTest } from "./src/db";
 
@@ -14,7 +15,6 @@ const ThemedShell: React.FC = () => {
   const { effective } = useTheme();
 
   useEffect(() => {
-    // Dev-only data-layer verification. No-op in production.
     if (__DEV__) {
       runSmokeTest().catch((error) => {
         console.error("[db] ❌ smoke test FAILED", error);
@@ -25,7 +25,9 @@ const ThemedShell: React.FC = () => {
   return (
     <>
       <StatusBar style={effective === "dark" ? "light" : "dark"} />
-      <RootNavigator />
+      <AppStateProvider>
+        <RootNavigator />
+      </AppStateProvider>
     </>
   );
 };

@@ -10,24 +10,26 @@ import { useTranslation } from "react-i18next";
 import type { RootStackParamList } from "./types";
 import { HomeScreen } from "../screens/HomeScreen";
 import { PlaceholderScreen } from "../screens/PlaceholderScreen";
+import { FarmSetupScreen } from "../screens/FarmSetupScreen";
+import { BootScreen } from "../screens/BootScreen";
 import { useTheme } from "../theme/ThemeContext";
+import { useAppState } from "../state/AppStateContext";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export const RootNavigator: React.FC = () => {
   const { colors } = useTheme();
   const { t } = useTranslation();
+  const { status, error, activeFarm, reload } = useAppState();
   const navigationRef = useNavigationContainerRef<RootStackParamList>();
 
   useEffect(() => {
     const onBackPress = (): boolean => {
-      // Case 1: mid-stack → go back one screen
       if (navigationRef.isReady() && navigationRef.canGoBack()) {
         navigationRef.goBack();
         return true;
       }
 
-      // Case 2: at Home → confirm exit rather than dropping the user silently
       Alert.alert(
         t("exit_title"),
         t("exit_message"),
@@ -44,10 +46,22 @@ export const RootNavigator: React.FC = () => {
     return () => sub.remove();
   }, [navigationRef, t]);
 
+  if (status === "loading") {
+    return <BootScreen status="loading" />;
+  }
+
+  if (status === "error") {
+    return (
+      <BootScreen status="error" error={error} onRetry={() => void reload()} />
+    );
+  }
+
+  const needsOnboarding = !activeFarm;
+
   return (
     <NavigationContainer ref={navigationRef}>
       <Stack.Navigator
-        initialRouteName="Home"
+        initialRouteName={needsOnboarding ? "FarmSetup" : "Home"}
         screenOptions={{
           headerStyle: { backgroundColor: colors.surface },
           headerTitleStyle: { color: colors.text, fontWeight: "800" },
@@ -55,16 +69,26 @@ export const RootNavigator: React.FC = () => {
           contentStyle: { backgroundColor: colors.background },
         }}
       >
-        <Stack.Screen
-          name="Home"
-          component={HomeScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="Placeholder"
-          component={PlaceholderScreen}
-          options={({ route }) => ({ title: t(route.params.titleKey) })}
-        />
+        {needsOnboarding ? (
+          <Stack.Screen
+            name="FarmSetup"
+            component={FarmSetupScreen}
+            options={{ headerShown: false }}
+          />
+        ) : (
+          <>
+            <Stack.Screen
+              name="Home"
+              component={HomeScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Placeholder"
+              component={PlaceholderScreen}
+              options={({ route }) => ({ title: t(route.params.titleKey) })}
+            />
+          </>
+        )}
       </Stack.Navigator>
     </NavigationContainer>
   );

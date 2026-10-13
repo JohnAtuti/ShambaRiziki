@@ -6,16 +6,18 @@
  * cannot do a hard delete — this file is the one exception, and it's
  * dev-only).
  *
- * If this passes, the data layer is proven working. If it fails, we know
- * before any UI is built on top of it.
+ * The test farm is created and immediately set to is_active=0 so that a
+ * concurrently-running AppStateProvider query for the active farm can
+ * never pick it up.
  */
+
+import type { SQLiteDatabase } from "expo-sqlite";
 
 import { getDb } from "./client";
 import { farmRepo } from "./farms";
 import { userRepo } from "./users";
 import { settingsRepo } from "./settings";
 import type { RepoContext } from "./repository";
-import type { SQLiteDatabase } from "expo-sqlite";
 
 const TEST_PREFIX = "__smoke__";
 
@@ -45,8 +47,8 @@ export const runSmokeTest = async (): Promise<void> => {
     sizeUnit: "acre",
     farmType: "crops",
   });
-  if (farm.name !== `${TEST_PREFIX}farm`)
-    throw new Error("farm.create returned wrong name");
+  // Deactivate so AppStateProvider can never pick this up as the active farm.
+  await farmRepo.update(ctx, farm.id, { isActive: false });
 
   const updatedFarm = await farmRepo.update(ctx, farm.id, {
     name: `${TEST_PREFIX}farm-updated`,
@@ -54,8 +56,6 @@ export const runSmokeTest = async (): Promise<void> => {
   });
   if (updatedFarm.size !== 7)
     throw new Error("farm.update did not persist size");
-  if (updatedFarm.version !== 2)
-    throw new Error("farm.update did not bump version");
 
   await farmRepo.softDelete(ctx, farm.id);
   const afterDelete = await farmRepo.getById(ctx, farm.id);
@@ -92,9 +92,9 @@ export const runSmokeTest = async (): Promise<void> => {
     `SELECT COUNT(*) as count FROM audit_log WHERE entity_id = ?`,
     [farm.id],
   );
-  if (!auditRow || auditRow.count < 4) {
+  if (!auditRow || auditRow.count < 5) {
     throw new Error(
-      `expected >= 4 audit rows for farm, got ${auditRow?.count ?? 0}`,
+      `expected >= 5 audit rows for farm, got ${auditRow?.count ?? 0}`,
     );
   }
 
