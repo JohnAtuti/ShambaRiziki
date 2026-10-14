@@ -6,6 +6,7 @@ import { Screen } from "../components/Screen";
 import { BigButton } from "../components/BigButton";
 import { FormField } from "../components/FormField";
 import { SelectField } from "../components/SelectField";
+import { WizardForm, type WizardStep } from "../components/WizardForm";
 import { useAppState } from "../state/AppStateContext";
 import { useTheme } from "../theme/ThemeContext";
 import { spacing } from "../theme/colors";
@@ -60,7 +61,6 @@ export const TaskTemplateFormScreen: React.FC<
   const [isActive, setIsActive] = useState(true);
   const [notes, setNotes] = useState("");
 
-  const [nameError, setNameError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [hydrating, setHydrating] = useState(mode === "edit");
@@ -138,18 +138,8 @@ export const TaskTemplateFormScreen: React.FC<
     return [{ value: NO_TARGET_TYPE, label: t("not_set") }, ...opts];
   }, [t]);
 
-  const validate = useCallback((): boolean => {
-    if (!name.trim()) {
-      setNameError(t("template_name_required"));
-      return false;
-    }
-    setNameError(null);
-    return true;
-  }, [name, t]);
-
   const onSubmit = useCallback(async (): Promise<void> => {
     if (!ctx) return;
-    if (!validate()) return;
     if (mode === "create" && !activeFarm) return;
 
     setSubmitting(true);
@@ -211,7 +201,6 @@ export const TaskTemplateFormScreen: React.FC<
     }
   }, [
     ctx,
-    validate,
     mode,
     activeFarm,
     templateId,
@@ -257,6 +246,157 @@ export const TaskTemplateFormScreen: React.FC<
     );
   }, [ctx, templateId, navigation, t]);
 
+  const steps = useMemo<readonly WizardStep[]>(
+    () => [
+      {
+        id: "identity",
+        titleKey: "step_template_identity",
+        hintKey: "step_template_identity_hint",
+        icon: "📋",
+        validate: () => name.trim().length > 0,
+        render: () => (
+          <>
+            <FormField
+              label={t("template_name")}
+              hint={t("template_name_hint")}
+              value={name}
+              onChangeText={setName}
+              required
+              autoCapitalize="sentences"
+              autoCorrect={false}
+              maxLength={150}
+              returnKeyType="next"
+            />
+            <FormField
+              label={t("template_description")}
+              hint={t("task_description_hint")}
+              value={description}
+              onChangeText={setDescription}
+              autoCapitalize="sentences"
+              autoCorrect={false}
+              maxLength={500}
+              returnKeyType="next"
+            />
+            <SelectField<TaskType>
+              label={t("template_task_type")}
+              value={taskType}
+              onChange={setTaskType}
+              options={typeOptions}
+            />
+          </>
+        ),
+      },
+      {
+        id: "defaults",
+        titleKey: "step_template_defaults",
+        hintKey: "step_template_defaults_hint",
+        icon: "⚙️",
+        validate: () => true,
+        isOptional: true,
+        render: () => (
+          <>
+            <SelectField<TaskPriority>
+              label={t("template_default_priority")}
+              value={defaultPriority}
+              onChange={setDefaultPriority}
+              options={priorityOptions}
+            />
+            <SelectField<RecurrenceType>
+              label={t("template_default_recurrence")}
+              value={defaultRecurrenceType}
+              onChange={setDefaultRecurrenceType}
+              options={recurrenceOptions}
+            />
+            <FormField
+              label={t("template_due_offset")}
+              hint={t("template_due_offset_hint")}
+              value={defaultDueOffsetDays}
+              onChangeText={setDefaultDueOffsetDays}
+              keyboardType="number-pad"
+              maxLength={4}
+              returnKeyType="done"
+            />
+          </>
+        ),
+      },
+      {
+        id: "extras",
+        titleKey: "step_template_extras",
+        hintKey: "step_template_extras_hint",
+        icon: "📝",
+        validate: () => true,
+        isOptional: true,
+        render: () => (
+          <>
+            <SelectField<string>
+              label={t("template_target_type")}
+              value={defaultTargetType}
+              onChange={setDefaultTargetType}
+              options={targetTypeOptions}
+            />
+            <FormField
+              label={t("template_estimated_hours")}
+              value={estimatedHours}
+              onChangeText={setEstimatedHours}
+              keyboardType="decimal-pad"
+              maxLength={6}
+              returnKeyType="next"
+            />
+            {mode === "edit" ? (
+              <View
+                style={[
+                  styles.switchRow,
+                  {
+                    borderColor: colors.border,
+                    backgroundColor: colors.surface,
+                  },
+                ]}
+              >
+                <Text style={[styles.switchLabel, { color: colors.text }]}>
+                  {t("template_is_active")}
+                </Text>
+                <Switch
+                  value={isActive}
+                  onValueChange={setIsActive}
+                  trackColor={{ true: colors.primary, false: colors.border }}
+                />
+              </View>
+            ) : null}
+            <FormField
+              label={t("template_notes")}
+              hint={t("plot_notes_hint")}
+              value={notes}
+              onChangeText={setNotes}
+              autoCapitalize="sentences"
+              autoCorrect={false}
+              maxLength={500}
+              returnKeyType="done"
+            />
+          </>
+        ),
+      },
+    ],
+    [
+      t,
+      name,
+      description,
+      taskType,
+      typeOptions,
+      defaultPriority,
+      priorityOptions,
+      defaultRecurrenceType,
+      recurrenceOptions,
+      defaultDueOffsetDays,
+      defaultTargetType,
+      targetTypeOptions,
+      estimatedHours,
+      mode,
+      colors,
+      isActive,
+      notes,
+    ],
+  );
+
   if (hydrating) {
     return (
       <Screen scroll={false}>
@@ -273,137 +413,35 @@ export const TaskTemplateFormScreen: React.FC<
     mode === "create" ? t("create_template") : t("update_template");
 
   return (
-    <Screen
-      footer={
-        <View style={styles.footerRow}>
-          {mode === "edit" ? (
-            <BigButton
-              label={t("delete")}
-              onPress={onDelete}
-              variant="danger"
-              style={styles.footerButton}
-            />
-          ) : null}
-          <BigButton
-            label={submitLabel}
-            onPress={() => void onSubmit()}
-            loading={submitting}
-            disabled={submitting}
-            style={styles.footerButton}
-          />
-        </View>
-      }
-    >
-      <FormField
-        label={t("template_name")}
-        hint={t("template_name_hint")}
-        value={name}
-        onChangeText={setName}
-        error={nameError}
-        required
-        autoCapitalize="sentences"
-        autoCorrect={false}
-        maxLength={150}
-        returnKeyType="next"
+    <Screen scroll={false} contentStyle={styles.noPadding}>
+      <WizardForm
+        steps={steps}
+        onSubmit={onSubmit}
+        submitting={submitting}
+        submitLabel={submitLabel}
+        errorMessage={submitError}
       />
-
-      <FormField
-        label={t("template_description")}
-        hint={t("task_description_hint")}
-        value={description}
-        onChangeText={setDescription}
-        autoCapitalize="sentences"
-        autoCorrect={false}
-        maxLength={500}
-        returnKeyType="next"
-      />
-
-      <SelectField<TaskType>
-        label={t("template_task_type")}
-        value={taskType}
-        onChange={setTaskType}
-        options={typeOptions}
-      />
-
-      <SelectField<TaskPriority>
-        label={t("template_default_priority")}
-        value={defaultPriority}
-        onChange={setDefaultPriority}
-        options={priorityOptions}
-      />
-
-      <SelectField<RecurrenceType>
-        label={t("template_default_recurrence")}
-        value={defaultRecurrenceType}
-        onChange={setDefaultRecurrenceType}
-        options={recurrenceOptions}
-      />
-
-      <FormField
-        label={t("template_due_offset")}
-        hint={t("template_due_offset_hint")}
-        value={defaultDueOffsetDays}
-        onChangeText={setDefaultDueOffsetDays}
-        keyboardType="number-pad"
-        maxLength={4}
-        returnKeyType="next"
-      />
-
-      <SelectField<string>
-        label={t("template_target_type")}
-        value={defaultTargetType}
-        onChange={setDefaultTargetType}
-        options={targetTypeOptions}
-      />
-
-      <FormField
-        label={t("template_estimated_hours")}
-        value={estimatedHours}
-        onChangeText={setEstimatedHours}
-        keyboardType="decimal-pad"
-        maxLength={6}
-        returnKeyType="next"
-      />
-
       {mode === "edit" ? (
         <View
           style={[
-            styles.switchRow,
-            { borderColor: colors.border, backgroundColor: colors.surface },
+            styles.deleteRow,
+            { borderTopColor: colors.border, backgroundColor: colors.surface },
           ]}
         >
-          <Text style={[styles.switchLabel, { color: colors.text }]}>
-            {t("template_is_active")}
-          </Text>
-          <Switch
-            value={isActive}
-            onValueChange={setIsActive}
-            trackColor={{ true: colors.primary, false: colors.border }}
+          <BigButton
+            label={t("delete")}
+            onPress={onDelete}
+            variant="danger"
+            style={styles.deleteBtn}
           />
         </View>
-      ) : null}
-
-      <FormField
-        label={t("template_notes")}
-        hint={t("plot_notes_hint")}
-        value={notes}
-        onChangeText={setNotes}
-        autoCapitalize="sentences"
-        autoCorrect={false}
-        maxLength={500}
-        returnKeyType="done"
-      />
-
-      {submitError ? (
-        <Text style={[styles.submitError, { color: colors.danger }]}>
-          {submitError}
-        </Text>
       ) : null}
     </Screen>
   );
 };
 
 const styles = StyleSheet.create({
+  noPadding: { padding: 0 },
   center: {
     flex: 1,
     alignItems: "center",
@@ -411,13 +449,6 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   loadingText: { ...typography.body },
-  submitError: {
-    ...typography.caption,
-    textAlign: "center",
-    marginBottom: spacing.md,
-  },
-  footerRow: { flexDirection: "row", gap: spacing.md },
-  footerButton: { flex: 1 },
   switchRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -428,4 +459,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   switchLabel: { ...typography.body },
+  deleteRow: {
+    padding: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  deleteBtn: { alignSelf: "stretch" },
 });

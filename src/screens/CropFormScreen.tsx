@@ -6,6 +6,7 @@ import { Screen } from "../components/Screen";
 import { BigButton } from "../components/BigButton";
 import { FormField } from "../components/FormField";
 import { SelectField } from "../components/SelectField";
+import { WizardForm, type WizardStep } from "../components/WizardForm";
 import { useAppState } from "../state/AppStateContext";
 import { useTheme } from "../theme/ThemeContext";
 import { spacing } from "../theme/colors";
@@ -37,8 +38,6 @@ export const CropFormScreen: React.FC<RootStackScreenProps<"CropForm">> = ({
   const [daysToHarvest, setDaysToHarvest] = useState("");
   const [notes, setNotes] = useState("");
 
-  const [nameError, setNameError] = useState<string | null>(null);
-  const [daysError, setDaysError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [hydrating, setHydrating] = useState(mode === "edit");
@@ -58,9 +57,7 @@ export const CropFormScreen: React.FC<RootStackScreenProps<"CropForm">> = ({
         );
         setNotes(existing.notes ?? "");
       } catch (err) {
-        if (__DEV__) {
-          console.warn("[CropForm] hydrate failed", err);
-        }
+        if (__DEV__) console.warn("[CropForm] hydrate failed", err);
       } finally {
         if (!cancelled) setHydrating(false);
       }
@@ -80,34 +77,8 @@ export const CropFormScreen: React.FC<RootStackScreenProps<"CropForm">> = ({
     [t],
   );
 
-  const validate = useCallback((): boolean => {
-    let ok = true;
-
-    if (!name.trim()) {
-      setNameError(t("crop_name_required"));
-      ok = false;
-    } else {
-      setNameError(null);
-    }
-
-    if (daysToHarvest.trim()) {
-      const parsed = Number(daysToHarvest.replace(",", "."));
-      if (!Number.isFinite(parsed) || parsed < 0 || parsed > 3650) {
-        setDaysError(t("invalid_number"));
-        ok = false;
-      } else {
-        setDaysError(null);
-      }
-    } else {
-      setDaysError(null);
-    }
-
-    return ok;
-  }, [name, daysToHarvest, t]);
-
   const onSubmit = useCallback(async (): Promise<void> => {
     if (!ctx) return;
-    if (!validate()) return;
     if (mode === "create" && !activeFarm) return;
 
     setSubmitting(true);
@@ -143,15 +114,12 @@ export const CropFormScreen: React.FC<RootStackScreenProps<"CropForm">> = ({
           ? err.message
           : t(mode === "create" ? "create_crop_error" : "update_crop_error");
       setSubmitError(message);
-      if (__DEV__) {
-        console.warn("[CropForm] submit failed", err);
-      }
+      if (__DEV__) console.warn("[CropForm] submit failed", err);
     } finally {
       setSubmitting(false);
     }
   }, [
     ctx,
-    validate,
     mode,
     activeFarm,
     cropId,
@@ -180,9 +148,7 @@ export const CropFormScreen: React.FC<RootStackScreenProps<"CropForm">> = ({
                 await cropRepo.softDelete(ctx, cropId);
                 navigation.goBack();
               } catch (err) {
-                if (__DEV__) {
-                  console.warn("[CropForm] delete failed", err);
-                }
+                if (__DEV__) console.warn("[CropForm] delete failed", err);
               }
             })();
           },
@@ -191,6 +157,81 @@ export const CropFormScreen: React.FC<RootStackScreenProps<"CropForm">> = ({
       { cancelable: true },
     );
   }, [ctx, cropId, navigation, t]);
+
+  const steps = useMemo<readonly WizardStep[]>(
+    () => [
+      {
+        id: "identity",
+        titleKey: "step_crop_identity",
+        hintKey: "step_crop_identity_hint",
+        icon: "🌱",
+        validate: () => name.trim().length > 0,
+        render: () => (
+          <>
+            <FormField
+              label={t("crop_name")}
+              hint={t("crop_name_hint")}
+              value={name}
+              onChangeText={setName}
+              required
+              autoCapitalize="words"
+              autoCorrect={false}
+              maxLength={100}
+              returnKeyType="next"
+            />
+            <FormField
+              label={t("crop_variety")}
+              hint={t("crop_variety_hint")}
+              value={variety}
+              onChangeText={setVariety}
+              autoCapitalize="words"
+              autoCorrect={false}
+              maxLength={100}
+              returnKeyType="next"
+            />
+            <SelectField<CropCategory>
+              label={t("crop_category")}
+              value={category}
+              onChange={setCategory}
+              options={categoryOptions}
+            />
+          </>
+        ),
+      },
+      {
+        id: "extras",
+        titleKey: "step_crop_extras",
+        hintKey: "step_crop_extras_hint",
+        icon: "📝",
+        validate: () => true,
+        isOptional: true,
+        render: () => (
+          <>
+            <FormField
+              label={t("crop_days_to_harvest")}
+              hint={t("crop_days_to_harvest_hint")}
+              value={daysToHarvest}
+              onChangeText={setDaysToHarvest}
+              keyboardType="number-pad"
+              maxLength={4}
+              returnKeyType="next"
+            />
+            <FormField
+              label={t("plot_notes")}
+              hint={t("plot_notes_hint")}
+              value={notes}
+              onChangeText={setNotes}
+              autoCapitalize="sentences"
+              autoCorrect={false}
+              maxLength={500}
+              returnKeyType="done"
+            />
+          </>
+        ),
+      },
+    ],
+    [t, name, variety, category, categoryOptions, daysToHarvest, notes],
+  );
 
   if (hydrating) {
     return (
@@ -207,90 +248,35 @@ export const CropFormScreen: React.FC<RootStackScreenProps<"CropForm">> = ({
   const submitLabel = mode === "create" ? t("create_crop") : t("update_crop");
 
   return (
-    <Screen
-      footer={
-        <View style={styles.footerRow}>
-          {mode === "edit" ? (
-            <BigButton
-              label={t("delete")}
-              onPress={onDelete}
-              variant="danger"
-              style={styles.footerButton}
-            />
-          ) : null}
+    <Screen scroll={false} contentStyle={styles.noPadding}>
+      <WizardForm
+        steps={steps}
+        onSubmit={onSubmit}
+        submitting={submitting}
+        submitLabel={submitLabel}
+        errorMessage={submitError}
+      />
+      {mode === "edit" ? (
+        <View
+          style={[
+            styles.deleteRow,
+            { borderTopColor: colors.border, backgroundColor: colors.surface },
+          ]}
+        >
           <BigButton
-            label={submitLabel}
-            onPress={() => void onSubmit()}
-            loading={submitting}
-            disabled={submitting}
-            style={styles.footerButton}
+            label={t("delete")}
+            onPress={onDelete}
+            variant="danger"
+            style={styles.deleteBtn}
           />
         </View>
-      }
-    >
-      <FormField
-        label={t("crop_name")}
-        hint={t("crop_name_hint")}
-        value={name}
-        onChangeText={setName}
-        error={nameError}
-        required
-        autoCapitalize="words"
-        autoCorrect={false}
-        maxLength={100}
-        returnKeyType="next"
-      />
-
-      <FormField
-        label={t("crop_variety")}
-        hint={t("crop_variety_hint")}
-        value={variety}
-        onChangeText={setVariety}
-        autoCapitalize="words"
-        autoCorrect={false}
-        maxLength={100}
-        returnKeyType="next"
-      />
-
-      <SelectField<CropCategory>
-        label={t("crop_category")}
-        value={category}
-        onChange={setCategory}
-        options={categoryOptions}
-      />
-
-      <FormField
-        label={t("crop_days_to_harvest")}
-        hint={t("crop_days_to_harvest_hint")}
-        value={daysToHarvest}
-        onChangeText={setDaysToHarvest}
-        error={daysError}
-        keyboardType="number-pad"
-        maxLength={4}
-        returnKeyType="done"
-      />
-
-      <FormField
-        label={t("plot_notes")}
-        hint={t("plot_notes_hint")}
-        value={notes}
-        onChangeText={setNotes}
-        autoCapitalize="sentences"
-        autoCorrect={false}
-        maxLength={500}
-        returnKeyType="done"
-      />
-
-      {submitError ? (
-        <Text style={[styles.submitError, { color: colors.danger }]}>
-          {submitError}
-        </Text>
       ) : null}
     </Screen>
   );
 };
 
 const styles = StyleSheet.create({
+  noPadding: { padding: 0 },
   center: {
     flex: 1,
     alignItems: "center",
@@ -298,11 +284,9 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   loadingText: { ...typography.body },
-  submitError: {
-    ...typography.caption,
-    textAlign: "center",
-    marginBottom: spacing.md,
+  deleteRow: {
+    padding: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
-  footerRow: { flexDirection: "row", gap: spacing.md },
-  footerButton: { flex: 1 },
+  deleteBtn: { alignSelf: "stretch" },
 });

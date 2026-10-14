@@ -6,6 +6,7 @@ import { Screen } from "../components/Screen";
 import { BigButton } from "../components/BigButton";
 import { FormField } from "../components/FormField";
 import { SelectField } from "../components/SelectField";
+import { WizardForm, type WizardStep } from "../components/WizardForm";
 import { useAppState } from "../state/AppStateContext";
 import { useTheme } from "../theme/ThemeContext";
 import { spacing } from "../theme/colors";
@@ -44,7 +45,6 @@ export const ItemFormScreen: React.FC<RootStackScreenProps<"ItemForm">> = ({
   const [isActive, setIsActive] = useState(true);
   const [notes, setNotes] = useState("");
 
-  const [nameError, setNameError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [hydrating, setHydrating] = useState(mode === "edit");
@@ -97,34 +97,22 @@ export const ItemFormScreen: React.FC<RootStackScreenProps<"ItemForm">> = ({
     [t],
   );
 
-  const parseOptionalNumber = (raw: string): number | null => {
-    if (!raw.trim()) return null;
-    const n = Number(raw.replace(",", "."));
-    return Number.isFinite(n) ? n : NaN;
-  };
-
-  const validate = useCallback((): boolean => {
-    let ok = true;
-    if (!name.trim()) {
-      setNameError(t("item_name_required"));
-      ok = false;
-    } else {
-      setNameError(null);
-    }
-    return ok;
-  }, [name, t]);
-
   const onSubmit = useCallback(async (): Promise<void> => {
     if (!ctx) return;
-    if (!validate()) return;
     if (mode === "create" && !activeFarm) return;
 
     setSubmitting(true);
     setSubmitError(null);
 
-    const parsedReorderLevel = parseOptionalNumber(reorderLevel);
-    const parsedReorderQuantity = parseOptionalNumber(reorderQuantity);
-    const parsedCost = parseOptionalNumber(defaultCost);
+    const parseOptNum = (raw: string): number | null => {
+      if (!raw.trim()) return null;
+      const n = Number(raw.replace(",", "."));
+      return Number.isFinite(n) ? n : null;
+    };
+
+    const parsedReorderLevel = parseOptNum(reorderLevel);
+    const parsedReorderQuantity = parseOptNum(reorderQuantity);
+    const parsedCost = parseOptNum(defaultCost);
 
     try {
       if (mode === "create" && activeFarm) {
@@ -171,7 +159,6 @@ export const ItemFormScreen: React.FC<RootStackScreenProps<"ItemForm">> = ({
     }
   }, [
     ctx,
-    validate,
     mode,
     activeFarm,
     itemId,
@@ -217,6 +204,199 @@ export const ItemFormScreen: React.FC<RootStackScreenProps<"ItemForm">> = ({
     );
   }, [ctx, itemId, navigation, t]);
 
+  const steps = useMemo<readonly WizardStep[]>(
+    () => [
+      {
+        id: "identity",
+        titleKey: "step_item_identity",
+        hintKey: "step_item_identity_hint",
+        icon: "📦",
+        validate: () => name.trim().length > 0,
+        render: () => (
+          <>
+            <FormField
+              label={t("item_name")}
+              hint={t("item_name_hint")}
+              value={name}
+              onChangeText={setName}
+              required
+              autoCapitalize="words"
+              autoCorrect={false}
+              maxLength={150}
+              returnKeyType="next"
+            />
+            <FormField
+              label={t("item_sku")}
+              hint={t("item_sku_hint")}
+              value={sku}
+              onChangeText={setSku}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              maxLength={50}
+              returnKeyType="next"
+            />
+            <SelectField<ItemCategory>
+              label={t("item_category")}
+              value={category}
+              onChange={setCategory}
+              options={categoryOptions}
+            />
+          </>
+        ),
+      },
+      {
+        id: "details",
+        titleKey: "step_item_details",
+        hintKey: "step_item_details_hint",
+        icon: "💵",
+        validate: () => true,
+        isOptional: true,
+        render: () => (
+          <>
+            <FormField
+              label={t("item_unit")}
+              hint={t("item_unit_hint")}
+              value={unit}
+              onChangeText={setUnit}
+              autoCapitalize="none"
+              autoCorrect={false}
+              maxLength={20}
+              returnKeyType="next"
+            />
+            <FormField
+              label={t("item_description")}
+              value={description}
+              onChangeText={setDescription}
+              autoCapitalize="sentences"
+              autoCorrect={false}
+              maxLength={500}
+              returnKeyType="next"
+            />
+            <FormField
+              label={t("item_default_cost")}
+              hint={t("item_default_cost_hint")}
+              value={defaultCost}
+              onChangeText={setDefaultCost}
+              keyboardType="decimal-pad"
+              maxLength={12}
+              returnKeyType="next"
+            />
+            <FormField
+              label={t("cost_currency")}
+              hint="KES"
+              value={defaultCostCurrency}
+              onChangeText={setDefaultCostCurrency}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              maxLength={5}
+              returnKeyType="done"
+            />
+          </>
+        ),
+      },
+      {
+        id: "reorder",
+        titleKey: "step_item_reorder",
+        hintKey: "step_item_reorder_hint",
+        icon: "⚠️",
+        validate: () => true,
+        isOptional: true,
+        render: () => (
+          <>
+            <FormField
+              label={t("item_reorder_level")}
+              hint={t("item_reorder_level_hint")}
+              value={reorderLevel}
+              onChangeText={setReorderLevel}
+              keyboardType="decimal-pad"
+              maxLength={10}
+              returnKeyType="next"
+            />
+            <FormField
+              label={t("item_reorder_quantity")}
+              hint={t("item_reorder_quantity_hint")}
+              value={reorderQuantity}
+              onChangeText={setReorderQuantity}
+              keyboardType="decimal-pad"
+              maxLength={10}
+              returnKeyType="done"
+            />
+          </>
+        ),
+      },
+      {
+        id: "extras",
+        titleKey: "step_item_extras",
+        hintKey: "step_item_extras_hint",
+        icon: "📝",
+        validate: () => true,
+        isOptional: true,
+        render: () => (
+          <>
+            <FormField
+              label={t("item_preferred_supplier")}
+              hint={t("item_preferred_supplier_hint")}
+              value={preferredSupplier}
+              onChangeText={setPreferredSupplier}
+              autoCapitalize="words"
+              autoCorrect={false}
+              maxLength={150}
+              returnKeyType="next"
+            />
+            {mode === "edit" ? (
+              <View
+                style={[
+                  styles.switchRow,
+                  {
+                    borderColor: colors.border,
+                    backgroundColor: colors.surface,
+                  },
+                ]}
+              >
+                <Text style={[styles.switchLabel, { color: colors.text }]}>
+                  {t("item_is_active")}
+                </Text>
+                <Switch
+                  value={isActive}
+                  onValueChange={setIsActive}
+                  trackColor={{ true: colors.primary, false: colors.border }}
+                />
+              </View>
+            ) : null}
+            <FormField
+              label={t("item_notes")}
+              hint={t("plot_notes_hint")}
+              value={notes}
+              onChangeText={setNotes}
+              autoCapitalize="sentences"
+              autoCorrect={false}
+              maxLength={500}
+              returnKeyType="done"
+            />
+          </>
+        ),
+      },
+    ],
+    [
+      t,
+      name,
+      sku,
+      categoryOptions,
+      category,
+      unit,
+      description,
+      defaultCost,
+      defaultCostCurrency,
+      reorderLevel,
+      reorderQuantity,
+      preferredSupplier,
+      isActive,
+      notes,
+      mode,
+      colors,
+    ],
+  );
+
   if (hydrating) {
     return (
       <Screen scroll={false}>
@@ -232,170 +412,35 @@ export const ItemFormScreen: React.FC<RootStackScreenProps<"ItemForm">> = ({
   const submitLabel = mode === "create" ? t("create_item") : t("update_item");
 
   return (
-    <Screen
-      footer={
-        <View style={styles.footerRow}>
-          {mode === "edit" ? (
-            <BigButton
-              label={t("delete")}
-              onPress={onDelete}
-              variant="danger"
-              style={styles.footerButton}
-            />
-          ) : null}
-          <BigButton
-            label={submitLabel}
-            onPress={() => void onSubmit()}
-            loading={submitting}
-            disabled={submitting}
-            style={styles.footerButton}
-          />
-        </View>
-      }
-    >
-      <FormField
-        label={t("item_name")}
-        hint={t("item_name_hint")}
-        value={name}
-        onChangeText={setName}
-        error={nameError}
-        required
-        autoCapitalize="words"
-        autoCorrect={false}
-        maxLength={150}
-        returnKeyType="next"
+    <Screen scroll={false} contentStyle={styles.noPadding}>
+      <WizardForm
+        steps={steps}
+        onSubmit={onSubmit}
+        submitting={submitting}
+        submitLabel={submitLabel}
+        errorMessage={submitError}
       />
-
-      <FormField
-        label={t("item_sku")}
-        hint={t("item_sku_hint")}
-        value={sku}
-        onChangeText={setSku}
-        autoCapitalize="characters"
-        autoCorrect={false}
-        maxLength={50}
-        returnKeyType="next"
-      />
-
-      <SelectField<ItemCategory>
-        label={t("item_category")}
-        value={category}
-        onChange={setCategory}
-        options={categoryOptions}
-      />
-
-      <FormField
-        label={t("item_unit")}
-        hint={t("item_unit_hint")}
-        value={unit}
-        onChangeText={setUnit}
-        autoCapitalize="none"
-        autoCorrect={false}
-        maxLength={20}
-        returnKeyType="next"
-      />
-
-      <FormField
-        label={t("item_description")}
-        value={description}
-        onChangeText={setDescription}
-        autoCapitalize="sentences"
-        autoCorrect={false}
-        maxLength={500}
-        returnKeyType="next"
-      />
-
-      <FormField
-        label={t("item_reorder_level")}
-        hint={t("item_reorder_level_hint")}
-        value={reorderLevel}
-        onChangeText={setReorderLevel}
-        keyboardType="decimal-pad"
-        maxLength={10}
-        returnKeyType="next"
-      />
-
-      <FormField
-        label={t("item_reorder_quantity")}
-        hint={t("item_reorder_quantity_hint")}
-        value={reorderQuantity}
-        onChangeText={setReorderQuantity}
-        keyboardType="decimal-pad"
-        maxLength={10}
-        returnKeyType="next"
-      />
-
-      <FormField
-        label={t("item_default_cost")}
-        hint={t("item_default_cost_hint")}
-        value={defaultCost}
-        onChangeText={setDefaultCost}
-        keyboardType="decimal-pad"
-        maxLength={12}
-        returnKeyType="next"
-      />
-
-      <FormField
-        label={t("cost_currency")}
-        hint="KES"
-        value={defaultCostCurrency}
-        onChangeText={setDefaultCostCurrency}
-        autoCapitalize="characters"
-        autoCorrect={false}
-        maxLength={5}
-        returnKeyType="next"
-      />
-
-      <FormField
-        label={t("item_preferred_supplier")}
-        hint={t("item_preferred_supplier_hint")}
-        value={preferredSupplier}
-        onChangeText={setPreferredSupplier}
-        autoCapitalize="words"
-        autoCorrect={false}
-        maxLength={150}
-        returnKeyType="next"
-      />
-
       {mode === "edit" ? (
         <View
           style={[
-            styles.switchRow,
-            { borderColor: colors.border, backgroundColor: colors.surface },
+            styles.deleteRow,
+            { borderTopColor: colors.border, backgroundColor: colors.surface },
           ]}
         >
-          <Text style={[styles.switchLabel, { color: colors.text }]}>
-            {t("item_is_active")}
-          </Text>
-          <Switch
-            value={isActive}
-            onValueChange={setIsActive}
-            trackColor={{ true: colors.primary, false: colors.border }}
+          <BigButton
+            label={t("delete")}
+            onPress={onDelete}
+            variant="danger"
+            style={styles.deleteBtn}
           />
         </View>
-      ) : null}
-
-      <FormField
-        label={t("item_notes")}
-        hint={t("plot_notes_hint")}
-        value={notes}
-        onChangeText={setNotes}
-        autoCapitalize="sentences"
-        autoCorrect={false}
-        maxLength={500}
-        returnKeyType="done"
-      />
-
-      {submitError ? (
-        <Text style={[styles.submitError, { color: colors.danger }]}>
-          {submitError}
-        </Text>
       ) : null}
     </Screen>
   );
 };
 
 const styles = StyleSheet.create({
+  noPadding: { padding: 0 },
   center: {
     flex: 1,
     alignItems: "center",
@@ -403,13 +448,6 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   loadingText: { ...typography.body },
-  submitError: {
-    ...typography.caption,
-    textAlign: "center",
-    marginBottom: spacing.md,
-  },
-  footerRow: { flexDirection: "row", gap: spacing.md },
-  footerButton: { flex: 1 },
   switchRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -420,4 +458,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   switchLabel: { ...typography.body },
+  deleteRow: {
+    padding: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  deleteBtn: { alignSelf: "stretch" },
 });

@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Alert, StyleSheet, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 
 import { Screen } from "../components/Screen";
 import { BigButton } from "../components/BigButton";
 import { FormField } from "../components/FormField";
 import { SelectField } from "../components/SelectField";
+import { WizardForm, type WizardStep } from "../components/WizardForm";
 import { useAppState } from "../state/AppStateContext";
 import { useTheme } from "../theme/ThemeContext";
 import { spacing } from "../theme/colors";
@@ -21,6 +22,8 @@ import {
   type TenureType,
 } from "../db";
 import type { RootStackScreenProps } from "../navigation/types";
+
+type Mode = "create" | "edit";
 
 const SOIL_OPTIONS: readonly { value: SoilType; key: string }[] = [
   { value: "clay", key: "soil_clay" },
@@ -60,8 +63,6 @@ const USE_OPTIONS: readonly { value: PlotUse; key: string; icon: string }[] = [
   { value: "none", key: "use_none", icon: "⬜" },
 ];
 
-type Mode = "create" | "edit";
-
 export const PlotFormScreen: React.FC<RootStackScreenProps<"PlotForm">> = ({
   route,
   navigation,
@@ -71,7 +72,7 @@ export const PlotFormScreen: React.FC<RootStackScreenProps<"PlotForm">> = ({
 
   const { t } = useTranslation();
   const { colors } = useTheme();
-  const { ctx, activeFarm, refreshActiveFarm } = useAppState();
+  const { ctx, activeFarm } = useAppState();
 
   const [name, setName] = useState("");
   const [size, setSize] = useState("");
@@ -85,16 +86,10 @@ export const PlotFormScreen: React.FC<RootStackScreenProps<"PlotForm">> = ({
   const [currentUse, setCurrentUse] = useState<PlotUse>("crops");
   const [notes, setNotes] = useState("");
 
-  const [nameError, setNameError] = useState<string | null>(null);
-  const [sizeError, setSizeError] = useState<string | null>(null);
-  const [phError, setPhError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [hydrating, setHydrating] = useState(mode === "edit");
 
-  // Hydrate the form when editing. All setState calls happen after the
-  // first await, so this is the same documented false positive as
-  // AppStateContext.
   useEffect(() => {
     if (mode !== "edit" || !ctx || !plotId) return;
     let cancelled = false;
@@ -114,9 +109,7 @@ export const PlotFormScreen: React.FC<RootStackScreenProps<"PlotForm">> = ({
         setCurrentUse(existing.currentUse);
         setNotes(existing.notes ?? "");
       } catch (err) {
-        if (__DEV__) {
-          console.warn("[PlotForm] hydrate failed", err);
-        }
+        if (__DEV__) console.warn("[PlotForm] hydrate failed", err);
       } finally {
         if (!cancelled) setHydrating(false);
       }
@@ -127,35 +120,19 @@ export const PlotFormScreen: React.FC<RootStackScreenProps<"PlotForm">> = ({
   }, [mode, ctx, plotId]);
 
   const soilOptions = useMemo(
-    () =>
-      SOIL_OPTIONS.map((o) => ({
-        value: o.value,
-        label: t(o.key),
-      })),
+    () => SOIL_OPTIONS.map((o) => ({ value: o.value, label: t(o.key) })),
     [t],
   );
   const fertOptions = useMemo(
-    () =>
-      FERT_OPTIONS.map((o) => ({
-        value: o.value,
-        label: t(o.key),
-      })),
+    () => FERT_OPTIONS.map((o) => ({ value: o.value, label: t(o.key) })),
     [t],
   );
   const slopeOptions = useMemo(
-    () =>
-      SLOPE_OPTIONS.map((o) => ({
-        value: o.value,
-        label: t(o.key),
-      })),
+    () => SLOPE_OPTIONS.map((o) => ({ value: o.value, label: t(o.key) })),
     [t],
   );
   const tenureOptions = useMemo(
-    () =>
-      TENURE_OPTIONS.map((o) => ({
-        value: o.value,
-        label: t(o.key),
-      })),
+    () => TENURE_OPTIONS.map((o) => ({ value: o.value, label: t(o.key) })),
     [t],
   );
   const useOptions = useMemo(
@@ -168,46 +145,8 @@ export const PlotFormScreen: React.FC<RootStackScreenProps<"PlotForm">> = ({
     [t],
   );
 
-  const validate = useCallback((): boolean => {
-    let ok = true;
-
-    if (!name.trim()) {
-      setNameError(t("plot_name_required"));
-      ok = false;
-    } else {
-      setNameError(null);
-    }
-
-    if (size.trim()) {
-      const parsed = Number(size.replace(",", "."));
-      if (!Number.isFinite(parsed) || parsed < 0) {
-        setSizeError(t("invalid_number"));
-        ok = false;
-      } else {
-        setSizeError(null);
-      }
-    } else {
-      setSizeError(null);
-    }
-
-    if (soilPh.trim()) {
-      const parsed = Number(soilPh.replace(",", "."));
-      if (!Number.isFinite(parsed) || parsed < 0 || parsed > 14) {
-        setPhError(t("invalid_number"));
-        ok = false;
-      } else {
-        setPhError(null);
-      }
-    } else {
-      setPhError(null);
-    }
-
-    return ok;
-  }, [name, size, soilPh, t]);
-
   const onSubmit = useCallback(async (): Promise<void> => {
     if (!ctx) return;
-    if (!validate()) return;
     if (mode === "create" && !activeFarm) return;
 
     setSubmitting(true);
@@ -232,7 +171,6 @@ export const PlotFormScreen: React.FC<RootStackScreenProps<"PlotForm">> = ({
           currentUse,
           notes: notes.trim() || null,
         });
-        await refreshActiveFarm();
       } else if (mode === "edit" && plotId) {
         await plotRepo.update(ctx, plotId, {
           name: name.trim(),
@@ -255,15 +193,12 @@ export const PlotFormScreen: React.FC<RootStackScreenProps<"PlotForm">> = ({
           ? err.message
           : t(mode === "create" ? "create_plot_error" : "update_plot_error");
       setSubmitError(message);
-      if (__DEV__) {
-        console.warn("[PlotForm] submit failed", err);
-      }
+      if (__DEV__) console.warn("[PlotForm] submit failed", err);
     } finally {
       setSubmitting(false);
     }
   }, [
     ctx,
-    validate,
     mode,
     activeFarm,
     plotId,
@@ -279,9 +214,192 @@ export const PlotFormScreen: React.FC<RootStackScreenProps<"PlotForm">> = ({
     currentUse,
     notes,
     navigation,
-    refreshActiveFarm,
     t,
   ]);
+
+  const onDelete = useCallback((): void => {
+    if (!ctx || !plotId) return;
+    Alert.alert(
+      t("delete_plot_title"),
+      t("delete_plot_message"),
+      [
+        { text: t("no"), style: "cancel" },
+        {
+          text: t("yes"),
+          style: "destructive",
+          onPress: () => {
+            void (async () => {
+              try {
+                await plotRepo.softDelete(ctx, plotId);
+                navigation.goBack();
+              } catch (err) {
+                if (__DEV__) console.warn("[PlotForm] delete failed", err);
+              }
+            })();
+          },
+        },
+      ],
+      { cancelable: true },
+    );
+  }, [ctx, plotId, navigation, t]);
+
+  const steps = useMemo<readonly WizardStep[]>(
+    () => [
+      {
+        id: "identity",
+        titleKey: "step_plot_identity",
+        hintKey: "step_plot_identity_hint",
+        icon: "🌍",
+        validate: () => name.trim().length > 0,
+        render: () => (
+          <>
+            <FormField
+              label={t("plot_name")}
+              hint={t("plot_name_hint")}
+              value={name}
+              onChangeText={setName}
+              required
+              autoCapitalize="words"
+              autoCorrect={false}
+              maxLength={100}
+              returnKeyType="next"
+            />
+            <FormField
+              label={t("plot_size")}
+              hint={t("plot_size_hint")}
+              value={size}
+              onChangeText={setSize}
+              keyboardType="decimal-pad"
+              maxLength={10}
+              returnKeyType="done"
+            />
+            <SelectField<SizeUnit>
+              label={t("size_unit")}
+              value={sizeUnit}
+              onChange={setSizeUnit}
+              options={[
+                { value: "acre", label: t("acre"), icon: "🟩" },
+                { value: "hectare", label: t("hectare"), icon: "🟦" },
+              ]}
+            />
+          </>
+        ),
+      },
+      {
+        id: "use",
+        titleKey: "step_plot_use",
+        hintKey: "step_plot_use_hint",
+        icon: "🌱",
+        validate: () => true,
+        render: () => (
+          <>
+            <FormField
+              label={t("plot_location")}
+              hint={t("plot_location_hint")}
+              value={locationText}
+              onChangeText={setLocationText}
+              autoCapitalize="sentences"
+              autoCorrect={false}
+              maxLength={200}
+              returnKeyType="next"
+            />
+            <SelectField<PlotUse>
+              label={t("current_use")}
+              value={currentUse}
+              onChange={setCurrentUse}
+              options={useOptions}
+            />
+          </>
+        ),
+      },
+      {
+        id: "soil",
+        titleKey: "step_plot_soil",
+        hintKey: "step_plot_soil_hint",
+        icon: "🟫",
+        validate: () => true,
+        isOptional: true,
+        render: () => (
+          <>
+            <SelectField<SoilType>
+              label={t("soil_type")}
+              value={soilType}
+              onChange={setSoilType}
+              options={soilOptions}
+            />
+            <FormField
+              label={t("soil_ph")}
+              hint={t("soil_ph_hint")}
+              value={soilPh}
+              onChangeText={setSoilPh}
+              keyboardType="decimal-pad"
+              maxLength={5}
+              returnKeyType="next"
+            />
+            <SelectField<Fertility>
+              label={t("fertility")}
+              value={fertility}
+              onChange={setFertility}
+              options={fertOptions}
+            />
+          </>
+        ),
+      },
+      {
+        id: "extras",
+        titleKey: "step_plot_extras",
+        hintKey: "step_plot_extras_hint",
+        icon: "📝",
+        validate: () => true,
+        isOptional: true,
+        render: () => (
+          <>
+            <SelectField<Slope>
+              label={t("slope")}
+              value={slope}
+              onChange={setSlope}
+              options={slopeOptions}
+            />
+            <SelectField<TenureType>
+              label={t("tenure")}
+              value={tenureType}
+              onChange={setTenureType}
+              options={tenureOptions}
+            />
+            <FormField
+              label={t("plot_notes")}
+              hint={t("plot_notes_hint")}
+              value={notes}
+              onChangeText={setNotes}
+              autoCapitalize="sentences"
+              autoCorrect={false}
+              maxLength={500}
+              returnKeyType="done"
+            />
+          </>
+        ),
+      },
+    ],
+    [
+      t,
+      name,
+      size,
+      sizeUnit,
+      locationText,
+      currentUse,
+      useOptions,
+      soilType,
+      soilOptions,
+      soilPh,
+      fertility,
+      fertOptions,
+      slope,
+      slopeOptions,
+      tenureType,
+      tenureOptions,
+      notes,
+    ],
+  );
 
   if (hydrating) {
     return (
@@ -298,128 +416,35 @@ export const PlotFormScreen: React.FC<RootStackScreenProps<"PlotForm">> = ({
   const submitLabel = mode === "create" ? t("create_plot") : t("update_plot");
 
   return (
-    <Screen
-      footer={
-        <BigButton
-          label={submitLabel}
-          onPress={() => void onSubmit()}
-          loading={submitting}
-          disabled={submitting}
-        />
-      }
-    >
-      <FormField
-        label={t("plot_name")}
-        hint={t("plot_name_hint")}
-        value={name}
-        onChangeText={setName}
-        error={nameError}
-        required
-        autoCapitalize="words"
-        autoCorrect={false}
-        maxLength={100}
-        returnKeyType="next"
+    <Screen scroll={false} contentStyle={styles.noPadding}>
+      <WizardForm
+        steps={steps}
+        onSubmit={onSubmit}
+        submitting={submitting}
+        submitLabel={submitLabel}
+        errorMessage={submitError}
       />
-
-      <FormField
-        label={t("plot_size")}
-        hint={t("plot_size_hint")}
-        value={size}
-        onChangeText={setSize}
-        error={sizeError}
-        keyboardType="decimal-pad"
-        maxLength={10}
-        returnKeyType="next"
-      />
-
-      <SelectField<SizeUnit>
-        label={t("size_unit")}
-        value={sizeUnit}
-        onChange={setSizeUnit}
-        options={[
-          { value: "acre", label: t("acre"), icon: "🟩" },
-          { value: "hectare", label: t("hectare"), icon: "🟦" },
-        ]}
-      />
-
-      <FormField
-        label={t("plot_location")}
-        hint={t("plot_location_hint")}
-        value={locationText}
-        onChangeText={setLocationText}
-        autoCapitalize="sentences"
-        autoCorrect={false}
-        maxLength={200}
-        returnKeyType="next"
-      />
-
-      <SelectField<SoilType>
-        label={t("soil_type")}
-        value={soilType}
-        onChange={setSoilType}
-        options={soilOptions}
-      />
-
-      <FormField
-        label={t("soil_ph")}
-        hint={t("soil_ph_hint")}
-        value={soilPh}
-        onChangeText={setSoilPh}
-        error={phError}
-        keyboardType="decimal-pad"
-        maxLength={5}
-        returnKeyType="next"
-      />
-
-      <SelectField<Fertility>
-        label={t("fertility")}
-        value={fertility}
-        onChange={setFertility}
-        options={fertOptions}
-      />
-
-      <SelectField<Slope>
-        label={t("slope")}
-        value={slope}
-        onChange={setSlope}
-        options={slopeOptions}
-      />
-
-      <SelectField<TenureType>
-        label={t("tenure")}
-        value={tenureType}
-        onChange={setTenureType}
-        options={tenureOptions}
-      />
-
-      <SelectField<PlotUse>
-        label={t("current_use")}
-        value={currentUse}
-        onChange={setCurrentUse}
-        options={useOptions}
-      />
-
-      <FormField
-        label={t("plot_notes")}
-        hint={t("plot_notes_hint")}
-        value={notes}
-        onChangeText={setNotes}
-        autoCapitalize="sentences"
-        autoCorrect={false}
-        maxLength={500}
-        returnKeyType="done"
-      />
-
-      {submitError ? (
-        <Text style={[styles.submitError, { color: colors.danger }]}>
-          {submitError}
-        </Text>
+      {mode === "edit" ? (
+        <View
+          style={[
+            styles.deleteRow,
+            { borderTopColor: colors.border, backgroundColor: colors.surface },
+          ]}
+        >
+          <BigButton
+            label={t("delete")}
+            onPress={onDelete}
+            variant="danger"
+            style={styles.deleteBtn}
+          />
+        </View>
       ) : null}
     </Screen>
   );
 };
 
 const styles = StyleSheet.create({
+  noPadding: { padding: 0 },
   center: {
     flex: 1,
     alignItems: "center",
@@ -427,9 +452,9 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   loadingText: { ...typography.body },
-  submitError: {
-    ...typography.caption,
-    textAlign: "center",
-    marginBottom: spacing.md,
+  deleteRow: {
+    padding: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
+  deleteBtn: { alignSelf: "stretch" },
 });

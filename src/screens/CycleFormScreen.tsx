@@ -6,6 +6,7 @@ import { Screen } from "../components/Screen";
 import { BigButton } from "../components/BigButton";
 import { FormField } from "../components/FormField";
 import { SelectField } from "../components/SelectField";
+import { WizardForm, type WizardStep } from "../components/WizardForm";
 import { useAppState } from "../state/AppStateContext";
 import { useTheme } from "../theme/ThemeContext";
 import { spacing } from "../theme/colors";
@@ -40,6 +41,7 @@ export const CycleFormScreen: React.FC<RootStackScreenProps<"CycleForm">> = ({
   const { colors } = useTheme();
   const { ctx, activeFarm } = useAppState();
 
+  // ---- Form state ----
   const [crops, setCrops] = useState<Crop[]>([]);
   const [cropId, setCropId] = useState("");
   const [cycleName, setCycleName] = useState("");
@@ -55,20 +57,19 @@ export const CycleFormScreen: React.FC<RootStackScreenProps<"CycleForm">> = ({
   const [expectedYieldUnit, setExpectedYieldUnit] = useState("");
   const [notes, setNotes] = useState("");
 
-  const [cropError, setCropError] = useState<string | null>(null);
-  const [dateError, setDateError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [hydrating, setHydrating] = useState(true);
 
+  // ---- Hydrate ----
   useEffect(() => {
     if (!ctx || !activeFarm) return;
     let cancelled = false;
     void (async () => {
       try {
-        const cropsForFarm = await cropRepo.listByFarm(ctx, activeFarm.id);
+        const cropRows = await cropRepo.listByFarm(ctx, activeFarm.id);
         if (cancelled) return;
-        setCrops(cropsForFarm);
+        setCrops(cropRows);
 
         if (mode === "edit" && cycleId) {
           const existing = await cropCycleRepo.getById(ctx, cycleId);
@@ -97,9 +98,7 @@ export const CycleFormScreen: React.FC<RootStackScreenProps<"CycleForm">> = ({
           setNotes(existing.notes ?? "");
         }
       } catch (err) {
-        if (__DEV__) {
-          console.warn("[CycleForm] hydrate failed", err);
-        }
+        if (__DEV__) console.warn("[CycleForm] hydrate failed", err);
       } finally {
         if (!cancelled) setHydrating(false);
       }
@@ -109,6 +108,7 @@ export const CycleFormScreen: React.FC<RootStackScreenProps<"CycleForm">> = ({
     };
   }, [ctx, activeFarm, mode, cycleId]);
 
+  // ---- Option lists ----
   const cropOptions = useMemo(
     () =>
       crops.map((crop) => ({
@@ -137,36 +137,11 @@ export const CycleFormScreen: React.FC<RootStackScreenProps<"CycleForm">> = ({
     [t],
   );
 
-  const validate = useCallback((): boolean => {
-    let ok = true;
-
-    if (!cropId) {
-      setCropError(t("required"));
-      ok = false;
-    } else {
-      setCropError(null);
-    }
-
-    if (!plantingDate.trim()) {
-      setDateError(t("planting_date_required"));
-      ok = false;
-    } else {
-      const parsed = new Date(plantingDate.trim());
-      if (Number.isNaN(parsed.getTime())) {
-        setDateError(t("invalid_number"));
-        ok = false;
-      } else {
-        setDateError(null);
-      }
-    }
-
-    return ok;
-  }, [cropId, plantingDate, t]);
-
+  // ---- Submit ----
   const onSubmit = useCallback(async (): Promise<void> => {
     if (!ctx) return;
-    if (!validate()) return;
     if (!cropId) return;
+    if (mode === "create" && (!activeFarm || !plotId)) return;
 
     setSubmitting(true);
     setSubmitError(null);
@@ -222,15 +197,12 @@ export const CycleFormScreen: React.FC<RootStackScreenProps<"CycleForm">> = ({
           ? err.message
           : t(mode === "create" ? "create_cycle_error" : "update_cycle_error");
       setSubmitError(message);
-      if (__DEV__) {
-        console.warn("[CycleForm] submit failed", err);
-      }
+      if (__DEV__) console.warn("[CycleForm] submit failed", err);
     } finally {
       setSubmitting(false);
     }
   }, [
     ctx,
-    validate,
     mode,
     activeFarm,
     plotId,
@@ -251,6 +223,216 @@ export const CycleFormScreen: React.FC<RootStackScreenProps<"CycleForm">> = ({
     t,
   ]);
 
+  // ---- Wizard steps ----
+  // Grouping mirrors how a farmer thinks about planting a crop:
+  //   what → when → when we expect to harvest → where the seed came from → optional extras.
+  const steps = useMemo<readonly WizardStep[]>(
+    () => [
+      {
+        id: "crop",
+        titleKey: "cycle_step_crop",
+        hintKey: "cycle_step_crop_hint",
+        icon: "🌾",
+        validate: () => cropId !== "",
+        render: () => (
+          <>
+            <SelectField<string>
+              label={t("crop_singular")}
+              value={cropId}
+              onChange={setCropId}
+              options={cropOptions}
+              required
+            />
+            <FormField
+              label={t("cycle_name")}
+              hint={t("cycle_name_hint")}
+              value={cycleName}
+              onChangeText={setCycleName}
+              autoCapitalize="words"
+              autoCorrect={false}
+              maxLength={100}
+              returnKeyType="done"
+            />
+          </>
+        ),
+      },
+      {
+        id: "planting",
+        titleKey: "cycle_step_planting",
+        hintKey: "cycle_step_planting_hint",
+        icon: "🌱",
+        validate: () => {
+          const s = plantingDate.trim();
+          if (!s) return false;
+          const d = new Date(s);
+          return !Number.isNaN(d.getTime());
+        },
+        render: () => (
+          <>
+            <FormField
+              label={t("planting_date")}
+              hint="2026-03-15"
+              value={plantingDate}
+              onChangeText={setPlantingDate}
+              required
+              autoCapitalize="none"
+              autoCorrect={false}
+              maxLength={20}
+              returnKeyType="next"
+            />
+            <SelectField<PlantingMethod>
+              label={t("planting_method")}
+              value={plantingMethod}
+              onChange={setPlantingMethod}
+              options={methodOptions}
+            />
+          </>
+        ),
+      },
+      {
+        id: "harvest",
+        titleKey: "cycle_step_harvest",
+        hintKey: "cycle_step_harvest_hint",
+        icon: "🌾",
+        validate: () => true, // all optional
+        isOptional: true,
+        render: () => (
+          <>
+            <FormField
+              label={t("expected_harvest_date")}
+              hint="2026-07-15"
+              value={expectedHarvestDate}
+              onChangeText={setExpectedHarvestDate}
+              autoCapitalize="none"
+              autoCorrect={false}
+              maxLength={20}
+              returnKeyType="next"
+            />
+            <SelectField<CycleStatus>
+              label={t("cycle_status")}
+              value={status}
+              onChange={setStatus}
+              options={statusOptions}
+            />
+          </>
+        ),
+      },
+      {
+        id: "seed",
+        titleKey: "cycle_step_seed",
+        hintKey: "cycle_step_seed_hint",
+        icon: "🌰",
+        validate: () => true,
+        isOptional: true,
+        render: () => (
+          <>
+            <FormField
+              label={t("seed_source")}
+              hint={t("seed_source_hint")}
+              value={seedSource}
+              onChangeText={setSeedSource}
+              autoCapitalize="sentences"
+              autoCorrect={false}
+              maxLength={200}
+              returnKeyType="next"
+            />
+            <FormField
+              label={t("seed_quantity")}
+              hint={t("seed_quantity_hint")}
+              value={seedQuantity}
+              onChangeText={setSeedQuantity}
+              keyboardType="decimal-pad"
+              maxLength={10}
+              returnKeyType="next"
+            />
+            <FormField
+              label={t("seed_unit")}
+              hint="kg, g, seeds"
+              value={seedUnit}
+              onChangeText={setSeedUnit}
+              autoCapitalize="none"
+              autoCorrect={false}
+              maxLength={20}
+              returnKeyType="done"
+            />
+          </>
+        ),
+      },
+      {
+        id: "extras",
+        titleKey: "cycle_step_extras",
+        hintKey: "cycle_step_extras_hint",
+        icon: "📝",
+        validate: () => true,
+        isOptional: true,
+        render: () => (
+          <>
+            <FormField
+              label={t("expected_yield")}
+              hint={t("expected_yield_hint")}
+              value={expectedYield}
+              onChangeText={setExpectedYield}
+              keyboardType="decimal-pad"
+              maxLength={10}
+              returnKeyType="next"
+            />
+            <FormField
+              label={t("expected_yield_unit")}
+              hint="kg, tonnes, bags"
+              value={expectedYieldUnit}
+              onChangeText={setExpectedYieldUnit}
+              autoCapitalize="none"
+              autoCorrect={false}
+              maxLength={20}
+              returnKeyType="next"
+            />
+            <FormField
+              label={t("plot_notes")}
+              hint={t("plot_notes_hint")}
+              value={notes}
+              onChangeText={setNotes}
+              autoCapitalize="sentences"
+              autoCorrect={false}
+              maxLength={500}
+              returnKeyType="done"
+            />
+          </>
+        ),
+      },
+    ],
+    [
+      t,
+      cropId,
+      cropOptions,
+      cycleName,
+      plantingDate,
+      plantingMethod,
+      methodOptions,
+      expectedHarvestDate,
+      status,
+      statusOptions,
+      seedSource,
+      seedQuantity,
+      seedUnit,
+      expectedYield,
+      expectedYieldUnit,
+      notes,
+    ],
+  );
+
+  // ---- Cancel from step 1 ----
+  const onCancel = useCallback((): void => {
+    if (mode === "edit") {
+      Alert.alert(t("cancel_edits_title"), t("cancel_edits_message"), [
+        { text: t("no"), style: "cancel" },
+        { text: t("yes"), onPress: () => navigation.goBack() },
+      ]);
+    } else {
+      navigation.goBack();
+    }
+  }, [mode, navigation, t]);
+
+  // ---- Delete button (edit mode) ----
   const onDelete = useCallback((): void => {
     if (!ctx || !cycleId) return;
     Alert.alert(
@@ -267,9 +449,7 @@ export const CycleFormScreen: React.FC<RootStackScreenProps<"CycleForm">> = ({
                 await cropCycleRepo.softDelete(ctx, cycleId);
                 navigation.goBack();
               } catch (err) {
-                if (__DEV__) {
-                  console.warn("[CycleForm] delete failed", err);
-                }
+                if (__DEV__) console.warn("[CycleForm] delete failed", err);
               }
             })();
           },
@@ -315,159 +495,36 @@ export const CycleFormScreen: React.FC<RootStackScreenProps<"CycleForm">> = ({
   const submitLabel = mode === "create" ? t("create_cycle") : t("update_cycle");
 
   return (
-    <Screen
-      footer={
-        <View style={styles.footerRow}>
-          {mode === "edit" ? (
-            <BigButton
-              label={t("delete")}
-              onPress={onDelete}
-              variant="danger"
-              style={styles.footerButton}
-            />
-          ) : null}
+    <Screen scroll={false} contentStyle={styles.noPadding}>
+      <WizardForm
+        steps={steps}
+        onSubmit={onSubmit}
+        submitting={submitting}
+        submitLabel={submitLabel}
+        onCancel={onCancel}
+        errorMessage={submitError}
+      />
+      {mode === "edit" ? (
+        <View
+          style={[
+            styles.deleteRow,
+            { borderTopColor: colors.border, backgroundColor: colors.surface },
+          ]}
+        >
           <BigButton
-            label={submitLabel}
-            onPress={() => void onSubmit()}
-            loading={submitting}
-            disabled={submitting}
-            style={styles.footerButton}
+            label={t("delete")}
+            onPress={onDelete}
+            variant="danger"
+            style={styles.deleteBtn}
           />
         </View>
-      }
-    >
-      <SelectField<string>
-        label={t("crop_singular")}
-        value={cropId}
-        onChange={setCropId}
-        options={cropOptions}
-        error={cropError}
-        required
-      />
-
-      <FormField
-        label={t("cycle_name")}
-        hint={t("cycle_name_hint")}
-        value={cycleName}
-        onChangeText={setCycleName}
-        autoCapitalize="words"
-        autoCorrect={false}
-        maxLength={100}
-        returnKeyType="next"
-      />
-
-      <FormField
-        label={t("planting_date")}
-        hint="2026-03-15"
-        value={plantingDate}
-        onChangeText={setPlantingDate}
-        error={dateError}
-        required
-        autoCapitalize="none"
-        autoCorrect={false}
-        maxLength={20}
-        returnKeyType="next"
-      />
-
-      <SelectField<PlantingMethod>
-        label={t("planting_method")}
-        value={plantingMethod}
-        onChange={setPlantingMethod}
-        options={methodOptions}
-      />
-
-      <FormField
-        label={t("expected_harvest_date")}
-        hint="2026-07-15"
-        value={expectedHarvestDate}
-        onChangeText={setExpectedHarvestDate}
-        autoCapitalize="none"
-        autoCorrect={false}
-        maxLength={20}
-        returnKeyType="next"
-      />
-
-      <SelectField<CycleStatus>
-        label={t("cycle_status")}
-        value={status}
-        onChange={setStatus}
-        options={statusOptions}
-      />
-
-      <FormField
-        label={t("seed_source")}
-        hint={t("seed_source_hint")}
-        value={seedSource}
-        onChangeText={setSeedSource}
-        autoCapitalize="sentences"
-        autoCorrect={false}
-        maxLength={200}
-        returnKeyType="next"
-      />
-
-      <FormField
-        label={t("seed_quantity")}
-        hint={t("seed_quantity_hint")}
-        value={seedQuantity}
-        onChangeText={setSeedQuantity}
-        keyboardType="decimal-pad"
-        maxLength={10}
-        returnKeyType="next"
-      />
-
-      <FormField
-        label={t("seed_unit")}
-        hint="kg, g, seeds"
-        value={seedUnit}
-        onChangeText={setSeedUnit}
-        autoCapitalize="none"
-        autoCorrect={false}
-        maxLength={20}
-        returnKeyType="next"
-      />
-
-      <FormField
-        label={t("expected_yield")}
-        hint={t("expected_yield_hint")}
-        value={expectedYield}
-        onChangeText={setExpectedYield}
-        keyboardType="decimal-pad"
-        maxLength={10}
-        returnKeyType="next"
-      />
-
-      <FormField
-        label={t("expected_yield_unit")}
-        hint="kg, tonnes, bags"
-        value={expectedYieldUnit}
-        onChangeText={setExpectedYieldUnit}
-        autoCapitalize="none"
-        autoCorrect={false}
-        maxLength={20}
-        returnKeyType="next"
-      />
-
-      <FormField
-        label={t("plot_notes")}
-        hint={t("plot_notes_hint")}
-        value={notes}
-        onChangeText={setNotes}
-        autoCapitalize="sentences"
-        autoCorrect={false}
-        maxLength={500}
-        returnKeyType="done"
-      />
-
-      {submitError ? (
-        <Text style={[styles.submitError, { color: colors.danger }]}>
-          {submitError}
-        </Text>
       ) : null}
     </Screen>
   );
 };
 
 const styles = StyleSheet.create({
+  noPadding: { padding: 0 },
   center: {
     flex: 1,
     alignItems: "center",
@@ -480,11 +537,9 @@ const styles = StyleSheet.create({
   emptyTitle: { ...typography.h2, textAlign: "center" },
   emptySub: { ...typography.body, textAlign: "center" },
   stretch: { marginTop: spacing.lg, alignSelf: "stretch" },
-  submitError: {
-    ...typography.caption,
-    textAlign: "center",
-    marginBottom: spacing.md,
+  deleteRow: {
+    padding: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
-  footerRow: { flexDirection: "row", gap: spacing.md },
-  footerButton: { flex: 1 },
+  deleteBtn: { alignSelf: "stretch" },
 });

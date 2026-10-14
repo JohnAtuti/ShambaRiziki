@@ -6,6 +6,7 @@ import { Screen } from "../components/Screen";
 import { BigButton } from "../components/BigButton";
 import { FormField } from "../components/FormField";
 import { SelectField } from "../components/SelectField";
+import { WizardForm, type WizardStep } from "../components/WizardForm";
 import { useAppState } from "../state/AppStateContext";
 import { useTheme } from "../theme/ThemeContext";
 import { spacing } from "../theme/colors";
@@ -69,10 +70,6 @@ export const AnimalFormScreen: React.FC<RootStackScreenProps<"AnimalForm">> = ({
   const [bcs, setBcs] = useState("");
   const [notes, setNotes] = useState("");
 
-  const [tagError, setTagError] = useState<string | null>(null);
-  const [dateError, setDateError] = useState<string | null>(null);
-  const [priceError, setPriceError] = useState<string | null>(null);
-  const [bcsError, setBcsError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [hydrating, setHydrating] = useState(true);
@@ -188,58 +185,8 @@ export const AnimalFormScreen: React.FC<RootStackScreenProps<"AnimalForm">> = ({
     return [{ value: NO_PARENT, label: t("not_set") }, ...opts];
   }, [allAnimals, animalId, t]);
 
-  const validate = useCallback((): boolean => {
-    let ok = true;
-
-    if (!tagId.trim()) {
-      setTagError(t("animal_tag_id_required"));
-      ok = false;
-    } else {
-      setTagError(null);
-    }
-
-    if (dateOfBirth.trim()) {
-      const parsed = new Date(dateOfBirth.trim());
-      if (Number.isNaN(parsed.getTime())) {
-        setDateError(t("invalid_number"));
-        ok = false;
-      } else {
-        setDateError(null);
-      }
-    } else {
-      setDateError(null);
-    }
-
-    if (purchasePrice.trim()) {
-      const parsed = Number(purchasePrice.replace(",", "."));
-      if (!Number.isFinite(parsed) || parsed < 0) {
-        setPriceError(t("invalid_number"));
-        ok = false;
-      } else {
-        setPriceError(null);
-      }
-    } else {
-      setPriceError(null);
-    }
-
-    if (bcs.trim()) {
-      const parsed = Number(bcs.replace(",", "."));
-      if (!Number.isFinite(parsed) || parsed < 1 || parsed > 5) {
-        setBcsError(t("invalid_number"));
-        ok = false;
-      } else {
-        setBcsError(null);
-      }
-    } else {
-      setBcsError(null);
-    }
-
-    return ok;
-  }, [tagId, dateOfBirth, purchasePrice, bcs, t]);
-
   const onSubmit = useCallback(async (): Promise<void> => {
     if (!ctx) return;
-    if (!validate()) return;
     if (mode === "create" && !activeFarm) return;
 
     setSubmitting(true);
@@ -313,7 +260,6 @@ export const AnimalFormScreen: React.FC<RootStackScreenProps<"AnimalForm">> = ({
     }
   }, [
     ctx,
-    validate,
     mode,
     activeFarm,
     animalId,
@@ -362,6 +308,204 @@ export const AnimalFormScreen: React.FC<RootStackScreenProps<"AnimalForm">> = ({
     );
   }, [ctx, animalId, navigation, t]);
 
+  const steps = useMemo<readonly WizardStep[]>(
+    () => [
+      {
+        id: "identity",
+        titleKey: "step_animal_identity",
+        hintKey: "step_animal_identity_hint",
+        icon: "🐄",
+        validate: () => tagId.trim().length > 0,
+        render: () => (
+          <>
+            <FormField
+              label={t("animal_tag_id")}
+              hint={t("animal_tag_id_hint")}
+              value={tagId}
+              onChangeText={setTagId}
+              required
+              autoCapitalize="characters"
+              autoCorrect={false}
+              maxLength={50}
+              returnKeyType="next"
+            />
+            <FormField
+              label={t("animal_name")}
+              hint={t("animal_name_hint")}
+              value={name}
+              onChangeText={setName}
+              autoCapitalize="words"
+              autoCorrect={false}
+              maxLength={100}
+              returnKeyType="done"
+            />
+          </>
+        ),
+      },
+      {
+        id: "classification",
+        titleKey: "step_animal_classification",
+        hintKey: "step_animal_classification_hint",
+        icon: "🐐",
+        validate: () => true,
+        render: () => (
+          <>
+            <SelectField<Species>
+              label={t("animal_species")}
+              value={species}
+              onChange={setSpecies}
+              options={speciesOptions}
+            />
+            <SelectField<AnimalSex>
+              label={t("animal_sex")}
+              value={sex}
+              onChange={setSex}
+              options={sexOptions}
+            />
+            <FormField
+              label={t("animal_date_of_birth")}
+              hint={t("animal_date_of_birth_hint")}
+              value={dateOfBirth}
+              onChangeText={setDateOfBirth}
+              autoCapitalize="none"
+              autoCorrect={false}
+              maxLength={20}
+              returnKeyType="done"
+            />
+          </>
+        ),
+      },
+      {
+        id: "origin",
+        titleKey: "step_animal_origin",
+        hintKey: "step_animal_origin_hint",
+        icon: "🏠",
+        validate: () => true,
+        isOptional: true,
+        render: () => (
+          <>
+            <SelectField<AnimalOrigin>
+              label={t("animal_origin")}
+              value={origin}
+              onChange={setOrigin}
+              options={originOptions}
+            />
+            <FormField
+              label={t("animal_purchase_date")}
+              hint="YYYY-MM-DD"
+              value={purchaseDate}
+              onChangeText={setPurchaseDate}
+              autoCapitalize="none"
+              autoCorrect={false}
+              maxLength={20}
+              returnKeyType="next"
+            />
+            <FormField
+              label={t("animal_purchase_price")}
+              value={purchasePrice}
+              onChangeText={setPurchasePrice}
+              keyboardType="decimal-pad"
+              maxLength={12}
+              returnKeyType="done"
+            />
+          </>
+        ),
+      },
+      {
+        id: "family",
+        titleKey: "step_animal_family",
+        hintKey: "step_animal_family_hint",
+        icon: "👪",
+        validate: () => true,
+        isOptional: true,
+        render: () => (
+          <>
+            <SelectField<string>
+              label={t("animal_herd")}
+              hint={t("animal_herd_hint")}
+              value={herdId}
+              onChange={setHerdId}
+              options={herdOptions}
+            />
+            <SelectField<string>
+              label={t("animal_mother")}
+              value={motherId}
+              onChange={setMotherId}
+              options={femaleOptions}
+            />
+            <SelectField<string>
+              label={t("animal_father")}
+              value={fatherId}
+              onChange={setFatherId}
+              options={maleOptions}
+            />
+          </>
+        ),
+      },
+      {
+        id: "state",
+        titleKey: "step_animal_state",
+        hintKey: "step_animal_state_hint",
+        icon: "🩺",
+        validate: () => true,
+        isOptional: true,
+        render: () => (
+          <>
+            <SelectField<AnimalStatus>
+              label={t("animal_status")}
+              value={status}
+              onChange={setStatus}
+              options={statusOptions}
+            />
+            <FormField
+              label={t("animal_bcs")}
+              hint={t("animal_bcs_hint")}
+              value={bcs}
+              onChangeText={setBcs}
+              keyboardType="decimal-pad"
+              maxLength={3}
+              returnKeyType="next"
+            />
+            <FormField
+              label={t("animal_notes")}
+              hint={t("plot_notes_hint")}
+              value={notes}
+              onChangeText={setNotes}
+              autoCapitalize="sentences"
+              autoCorrect={false}
+              maxLength={500}
+              returnKeyType="done"
+            />
+          </>
+        ),
+      },
+    ],
+    [
+      t,
+      tagId,
+      name,
+      species,
+      speciesOptions,
+      sex,
+      sexOptions,
+      dateOfBirth,
+      origin,
+      originOptions,
+      purchaseDate,
+      purchasePrice,
+      herdId,
+      herdOptions,
+      motherId,
+      femaleOptions,
+      fatherId,
+      maleOptions,
+      status,
+      statusOptions,
+      bcs,
+      notes,
+    ],
+  );
+
   if (hydrating) {
     return (
       <Screen scroll={false}>
@@ -378,177 +522,35 @@ export const AnimalFormScreen: React.FC<RootStackScreenProps<"AnimalForm">> = ({
     mode === "create" ? t("create_animal") : t("update_animal");
 
   return (
-    <Screen
-      footer={
-        <View style={styles.footerRow}>
-          {mode === "edit" ? (
-            <BigButton
-              label={t("delete")}
-              onPress={onDelete}
-              variant="danger"
-              style={styles.footerButton}
-            />
-          ) : null}
+    <Screen scroll={false} contentStyle={styles.noPadding}>
+      <WizardForm
+        steps={steps}
+        onSubmit={onSubmit}
+        submitting={submitting}
+        submitLabel={submitLabel}
+        errorMessage={submitError}
+      />
+      {mode === "edit" ? (
+        <View
+          style={[
+            styles.deleteRow,
+            { borderTopColor: colors.border, backgroundColor: colors.surface },
+          ]}
+        >
           <BigButton
-            label={submitLabel}
-            onPress={() => void onSubmit()}
-            loading={submitting}
-            disabled={submitting}
-            style={styles.footerButton}
+            label={t("delete")}
+            onPress={onDelete}
+            variant="danger"
+            style={styles.deleteBtn}
           />
         </View>
-      }
-    >
-      <FormField
-        label={t("animal_tag_id")}
-        hint={t("animal_tag_id_hint")}
-        value={tagId}
-        onChangeText={setTagId}
-        error={tagError}
-        required
-        autoCapitalize="characters"
-        autoCorrect={false}
-        maxLength={50}
-        returnKeyType="next"
-      />
-
-      <FormField
-        label={t("animal_name")}
-        hint={t("animal_name_hint")}
-        value={name}
-        onChangeText={setName}
-        autoCapitalize="words"
-        autoCorrect={false}
-        maxLength={100}
-        returnKeyType="next"
-      />
-
-      <SelectField<Species>
-        label={t("animal_species")}
-        value={species}
-        onChange={setSpecies}
-        options={speciesOptions}
-      />
-
-      <FormField
-        label={t("animal_breed")}
-        hint={t("herd_breed_hint")}
-        value={breed}
-        onChangeText={setBreed}
-        autoCapitalize="words"
-        autoCorrect={false}
-        maxLength={100}
-        returnKeyType="next"
-      />
-
-      <SelectField<AnimalSex>
-        label={t("animal_sex")}
-        value={sex}
-        onChange={setSex}
-        options={sexOptions}
-      />
-
-      <FormField
-        label={t("animal_date_of_birth")}
-        hint={t("animal_date_of_birth_hint")}
-        value={dateOfBirth}
-        onChangeText={setDateOfBirth}
-        error={dateError}
-        autoCapitalize="none"
-        autoCorrect={false}
-        maxLength={20}
-        returnKeyType="next"
-      />
-
-      <SelectField<AnimalOrigin>
-        label={t("animal_origin")}
-        value={origin}
-        onChange={setOrigin}
-        options={originOptions}
-      />
-
-      <FormField
-        label={t("animal_purchase_date")}
-        hint={t("animal_date_of_birth_hint")}
-        value={purchaseDate}
-        onChangeText={setPurchaseDate}
-        autoCapitalize="none"
-        autoCorrect={false}
-        maxLength={20}
-        returnKeyType="next"
-      />
-
-      <FormField
-        label={t("animal_purchase_price")}
-        value={purchasePrice}
-        onChangeText={setPurchasePrice}
-        error={priceError}
-        keyboardType="decimal-pad"
-        maxLength={12}
-        returnKeyType="next"
-      />
-
-      <SelectField<AnimalStatus>
-        label={t("animal_status")}
-        value={status}
-        onChange={setStatus}
-        options={statusOptions}
-      />
-
-      <SelectField<string>
-        label={t("animal_herd")}
-        hint={t("animal_herd_hint")}
-        value={herdId}
-        onChange={setHerdId}
-        options={herdOptions}
-      />
-
-      <SelectField<string>
-        label={t("animal_mother")}
-        value={motherId}
-        onChange={setMotherId}
-        options={femaleOptions}
-      />
-
-      <SelectField<string>
-        label={t("animal_father")}
-        value={fatherId}
-        onChange={setFatherId}
-        options={maleOptions}
-      />
-
-      <FormField
-        label={t("animal_bcs")}
-        hint={t("animal_bcs_hint")}
-        value={bcs}
-        onChangeText={setBcs}
-        error={bcsError}
-        keyboardType="decimal-pad"
-        maxLength={3}
-        returnKeyType="next"
-      />
-
-      <FormField
-        label={t("animal_notes")}
-        hint={t("plot_notes_hint")}
-        value={notes}
-        onChangeText={setNotes}
-        autoCapitalize="sentences"
-        autoCorrect={false}
-        maxLength={500}
-        returnKeyType="done"
-      />
-
-      {submitError ? (
-        <Text style={[styles.submitError, { color: colors.danger }]}>
-          {submitError}
-        </Text>
       ) : null}
     </Screen>
   );
 };
 
 const styles = StyleSheet.create({
+  noPadding: { padding: 0 },
   center: {
     flex: 1,
     alignItems: "center",
@@ -556,11 +558,9 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   loadingText: { ...typography.body },
-  submitError: {
-    ...typography.caption,
-    textAlign: "center",
-    marginBottom: spacing.md,
+  deleteRow: {
+    padding: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
-  footerRow: { flexDirection: "row", gap: spacing.md },
-  footerButton: { flex: 1 },
+  deleteBtn: { alignSelf: "stretch" },
 });

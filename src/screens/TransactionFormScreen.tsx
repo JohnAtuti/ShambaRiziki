@@ -6,6 +6,7 @@ import { Screen } from "../components/Screen";
 import { BigButton } from "../components/BigButton";
 import { FormField } from "../components/FormField";
 import { SelectField } from "../components/SelectField";
+import { WizardForm, type WizardStep } from "../components/WizardForm";
 import { useAppState } from "../state/AppStateContext";
 import { useTheme } from "../theme/ThemeContext";
 import { spacing } from "../theme/colors";
@@ -39,9 +40,6 @@ type Mode = "create" | "edit";
 const NO_WAREHOUSE = "__none__";
 const NO_TARGET_TYPE = "__none__";
 
-// Only these target types are surfaced in the picker. crop_cycle is
-// supported by the schema but not shown in v1 UI; users can pick "Other"
-// and describe the target in the free-text field.
 const PICKABLE_TARGET_TYPES: readonly InventoryTargetType[] = [
   "plot",
   "animal",
@@ -98,19 +96,10 @@ export const TransactionFormScreen: React.FC<
   const [targetFreeText, setTargetFreeText] = useState("");
   const [notes, setNotes] = useState("");
 
-  const [dateError, setDateError] = useState<string | null>(null);
-  const [quantityError, setQuantityError] = useState<string | null>(null);
-  const [targetError, setTargetError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [hydrating, setHydrating] = useState(true);
 
-  // ---------------------------------------------------------------------
-  // Hydrate: load reference data, and existing transaction when editing.
-  // Every setState in this effect happens after the first await, so the
-  // react-hooks/set-state-in-effect rule's synchronous-mutation concern
-  // does not apply. Same pattern as AppStateContext.
-  // ---------------------------------------------------------------------
   useEffect(() => {
     if (!ctx || !activeFarm) return;
     let cancelled = false;
@@ -162,9 +151,6 @@ export const TransactionFormScreen: React.FC<
           setReference(existing.reference ?? "");
           setTargetType(existing.targetType ?? NO_TARGET_TYPE);
           setTargetId(existing.targetId ?? "");
-          // Any free-text label is loaded here; when the target type is a
-          // picker (plot/animal/herd), the label is re-derived at submit
-          // time from the picked instance.
           setTargetFreeText(existing.targetLabel ?? "");
           setNotes(existing.notes ?? "");
         } else if (itemId) {
@@ -194,10 +180,6 @@ export const TransactionFormScreen: React.FC<
       cancelled = true;
     };
   }, [ctx, activeFarm, mode, transactionId, itemId]);
-
-  // ---------------------------------------------------------------------
-  // Option lists
-  // ---------------------------------------------------------------------
 
   const typeOptions = useMemo(
     () =>
@@ -238,90 +220,8 @@ export const TransactionFormScreen: React.FC<
     return [];
   }, [targetType, plots, animals, herds]);
 
-  // ---------------------------------------------------------------------
-  // Validation
-  // ---------------------------------------------------------------------
-
-  const validate = useCallback((): boolean => {
-    let ok = true;
-
-    if (!transactionDate.trim()) {
-      setDateError(t("transaction_date_required"));
-      ok = false;
-    } else {
-      const parsed = new Date(transactionDate.trim());
-      if (Number.isNaN(parsed.getTime())) {
-        setDateError(t("invalid_number"));
-        ok = false;
-      } else {
-        setDateError(null);
-      }
-    }
-
-    const qtyTrimmed = quantity.trim();
-    if (!qtyTrimmed) {
-      setQuantityError(t("transaction_quantity_required"));
-      ok = false;
-    } else {
-      const parsed = Number(qtyTrimmed.replace(",", "."));
-      if (!Number.isFinite(parsed)) {
-        setQuantityError(t("invalid_number"));
-        ok = false;
-      } else if (parsed === 0) {
-        setQuantityError(t("transaction_requires_positive"));
-        ok = false;
-      } else if (!allowsNegativeQuantity(transactionType) && parsed < 0) {
-        setQuantityError(t("transaction_requires_positive"));
-        ok = false;
-      } else {
-        setQuantityError(null);
-      }
-    }
-
-    if (usesTarget(transactionType)) {
-      if (targetType === NO_TARGET_TYPE) {
-        setTargetError(t("required"));
-        ok = false;
-      } else if (targetType === "other" || targetType === "worker") {
-        if (!targetFreeText.trim()) {
-          setTargetError(t("required"));
-          ok = false;
-        } else {
-          setTargetError(null);
-        }
-      } else if (!targetId) {
-        setTargetError(t("required"));
-        ok = false;
-      } else {
-        setTargetError(null);
-      }
-    } else {
-      setTargetError(null);
-    }
-
-    return ok;
-  }, [
-    transactionDate,
-    quantity,
-    transactionType,
-    targetType,
-    targetId,
-    targetFreeText,
-    t,
-  ]);
-
-  // ---------------------------------------------------------------------
-  // Submit
-  //
-  // The final target label is derived here from the picked instance (for
-  // plot/animal/herd) or from the free-text field (for worker/other).
-  // This avoids storing derived state, which would trip the set-state-in-
-  // effect rule.
-  // ---------------------------------------------------------------------
-
   const onSubmit = useCallback(async (): Promise<void> => {
     if (!ctx || !item) return;
-    if (!validate()) return;
     if (mode === "create" && !activeFarm) return;
 
     setSubmitting(true);
@@ -426,7 +326,6 @@ export const TransactionFormScreen: React.FC<
   }, [
     ctx,
     item,
-    validate,
     mode,
     activeFarm,
     transactionId,
@@ -479,6 +378,260 @@ export const TransactionFormScreen: React.FC<
     );
   }, [ctx, transactionId, navigation, t]);
 
+  const steps = useMemo<readonly WizardStep[]>(() => {
+    const s: WizardStep[] = [
+      {
+        id: "type",
+        titleKey: "step_tx_type",
+        hintKey: "step_tx_type_hint",
+        icon: "🔄",
+        validate: () => {
+          if (!transactionDate.trim()) return false;
+          const d = new Date(transactionDate.trim());
+          if (Number.isNaN(d.getTime())) return false;
+          const q = quantity.trim();
+          if (!q) return false;
+          const n = Number(q.replace(",", "."));
+          if (!Number.isFinite(n) || n === 0) return false;
+          if (!allowsNegativeQuantity(transactionType) && n < 0) return false;
+          return true;
+        },
+        render: () => (
+          <>
+            <SelectField<InventoryTransactionType>
+              label={t("transaction_type")}
+              value={transactionType}
+              onChange={setTransactionType}
+              options={typeOptions}
+              required
+            />
+            <FormField
+              label={t("transaction_date")}
+              hint="2026-04-10"
+              value={transactionDate}
+              onChangeText={setTransactionDate}
+              required
+              autoCapitalize="none"
+              autoCorrect={false}
+              maxLength={20}
+              returnKeyType="next"
+            />
+            <FormField
+              label={t("transaction_quantity")}
+              hint={
+                allowsNegativeQuantity(transactionType) ? "e.g. -2" : undefined
+              }
+              value={quantity}
+              onChangeText={setQuantity}
+              required
+              keyboardType="numbers-and-punctuation"
+              maxLength={12}
+              returnKeyType="done"
+            />
+          </>
+        ),
+      },
+    ];
+
+    if (usesCost(transactionType)) {
+      s.push({
+        id: "cost",
+        titleKey: "step_tx_cost",
+        hintKey: "step_tx_cost_hint",
+        icon: "💰",
+        validate: () => true,
+        isOptional: true,
+        render: () => (
+          <>
+            <FormField
+              label={t("transaction_unit_cost")}
+              value={unitCost}
+              onChangeText={setUnitCost}
+              keyboardType="decimal-pad"
+              maxLength={12}
+              returnKeyType="next"
+            />
+            <FormField
+              label={t("transaction_total_cost")}
+              value={totalCost}
+              onChangeText={setTotalCost}
+              keyboardType="decimal-pad"
+              maxLength={14}
+              returnKeyType="next"
+            />
+            <FormField
+              label={t("cost_currency")}
+              hint="KES"
+              value={costCurrency}
+              onChangeText={setCostCurrency}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              maxLength={5}
+              returnKeyType="done"
+            />
+          </>
+        ),
+      });
+    }
+
+    if (usesSupplierAndBatch(transactionType)) {
+      s.push({
+        id: "supplier",
+        titleKey: "step_tx_supplier",
+        hintKey: "step_tx_supplier_hint",
+        icon: "🏪",
+        validate: () => true,
+        isOptional: true,
+        render: () => (
+          <>
+            <FormField
+              label={t("transaction_supplier")}
+              value={supplier}
+              onChangeText={setSupplier}
+              autoCapitalize="words"
+              autoCorrect={false}
+              maxLength={200}
+              returnKeyType="next"
+            />
+            <FormField
+              label={t("transaction_batch")}
+              value={batchNumber}
+              onChangeText={setBatchNumber}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              maxLength={50}
+              returnKeyType="next"
+            />
+            <FormField
+              label={t("transaction_expiry")}
+              hint="YYYY-MM-DD"
+              value={expiryDate}
+              onChangeText={setExpiryDate}
+              autoCapitalize="none"
+              autoCorrect={false}
+              maxLength={20}
+              returnKeyType="done"
+            />
+          </>
+        ),
+      });
+    }
+
+    if (usesTarget(transactionType)) {
+      s.push({
+        id: "target",
+        titleKey: "step_tx_target",
+        hintKey: "step_tx_target_hint",
+        icon: "🎯",
+        validate: () => {
+          if (targetType === NO_TARGET_TYPE) return false;
+          if (targetType === "other" || targetType === "worker") {
+            return targetFreeText.trim().length > 0;
+          }
+          return targetId.length > 0;
+        },
+        render: () => (
+          <>
+            <SelectField<string>
+              label={t("transaction_target")}
+              value={targetType}
+              onChange={(v) => {
+                setTargetType(v);
+                setTargetId("");
+                setTargetFreeText("");
+              }}
+              options={targetTypeOptions}
+              required
+            />
+            {targetType !== NO_TARGET_TYPE &&
+            targetType !== "other" &&
+            targetType !== "worker" ? (
+              <SelectField<string>
+                label={t(keyForTargetType(targetType as InventoryTargetType))}
+                value={targetId}
+                onChange={setTargetId}
+                options={targetInstanceOptions}
+              />
+            ) : null}
+            {targetType === "other" || targetType === "worker" ? (
+              <FormField
+                label={t(keyForTargetType(targetType as InventoryTargetType))}
+                hint="e.g. John Kamau"
+                value={targetFreeText}
+                onChangeText={setTargetFreeText}
+                autoCapitalize="words"
+                autoCorrect={false}
+                maxLength={200}
+                returnKeyType="done"
+              />
+            ) : null}
+          </>
+        ),
+      });
+    }
+
+    s.push({
+      id: "extras",
+      titleKey: "step_tx_extras",
+      hintKey: "step_tx_extras_hint",
+      icon: "📝",
+      validate: () => true,
+      isOptional: true,
+      render: () => (
+        <>
+          <SelectField<string>
+            label={t("warehouses")}
+            value={warehouseId}
+            onChange={setWarehouseId}
+            options={warehouseOptions}
+          />
+          <FormField
+            label={t("transaction_reference")}
+            value={reference}
+            onChangeText={setReference}
+            autoCapitalize="characters"
+            autoCorrect={false}
+            maxLength={80}
+            returnKeyType="next"
+          />
+          <FormField
+            label={t("transaction_notes")}
+            hint={t("plot_notes_hint")}
+            value={notes}
+            onChangeText={setNotes}
+            autoCapitalize="sentences"
+            autoCorrect={false}
+            maxLength={500}
+            returnKeyType="done"
+          />
+        </>
+      ),
+    });
+
+    return s;
+  }, [
+    t,
+    transactionType,
+    transactionDate,
+    quantity,
+    typeOptions,
+    unitCost,
+    totalCost,
+    costCurrency,
+    supplier,
+    batchNumber,
+    expiryDate,
+    targetType,
+    targetId,
+    targetFreeText,
+    targetTypeOptions,
+    targetInstanceOptions,
+    warehouseId,
+    warehouseOptions,
+    reference,
+    notes,
+  ]);
+
   if (hydrating) {
     return (
       <Screen scroll={false}>
@@ -513,34 +666,8 @@ export const TransactionFormScreen: React.FC<
   const submitLabel =
     mode === "create" ? t("create_transaction") : t("update_transaction");
 
-  const showSupplierBatch = usesSupplierAndBatch(transactionType);
-  const showCost = usesCost(transactionType);
-  const showTarget = usesTarget(transactionType);
-  const showTargetInstance =
-    showTarget && targetType !== NO_TARGET_TYPE && targetType !== "other";
-
   return (
-    <Screen
-      footer={
-        <View style={styles.footerRow}>
-          {mode === "edit" ? (
-            <BigButton
-              label={t("delete")}
-              onPress={onDelete}
-              variant="danger"
-              style={styles.footerButton}
-            />
-          ) : null}
-          <BigButton
-            label={submitLabel}
-            onPress={() => void onSubmit()}
-            loading={submitting}
-            disabled={submitting}
-            style={styles.footerButton}
-          />
-        </View>
-      }
-    >
+    <Screen scroll={false} contentStyle={styles.noPadding}>
       <View
         style={[
           styles.itemHeader,
@@ -554,201 +681,34 @@ export const TransactionFormScreen: React.FC<
           {item.name}
         </Text>
       </View>
-
-      <SelectField<InventoryTransactionType>
-        label={t("transaction_type")}
-        value={transactionType}
-        onChange={setTransactionType}
-        options={typeOptions}
-        required
+      <WizardForm
+        steps={steps}
+        onSubmit={onSubmit}
+        submitting={submitting}
+        submitLabel={submitLabel}
+        errorMessage={submitError}
       />
-
-      <FormField
-        label={t("transaction_date")}
-        hint="2026-04-10"
-        value={transactionDate}
-        onChangeText={setTransactionDate}
-        error={dateError}
-        required
-        autoCapitalize="none"
-        autoCorrect={false}
-        maxLength={20}
-        returnKeyType="next"
-      />
-
-      <FormField
-        label={t("transaction_quantity")}
-        hint={
-          allowsNegativeQuantity(transactionType)
-            ? "e.g. -2 to correct downward"
-            : undefined
-        }
-        value={quantity}
-        onChangeText={setQuantity}
-        error={quantityError}
-        required
-        keyboardType="numbers-and-punctuation"
-        maxLength={12}
-        returnKeyType="next"
-      />
-
-      <FormField
-        label={t("quantity_unit")}
-        hint={item.unit}
-        value={quantityUnit}
-        onChangeText={setQuantityUnit}
-        autoCapitalize="none"
-        autoCorrect={false}
-        maxLength={20}
-        returnKeyType="next"
-      />
-
-      <SelectField<string>
-        label={t("warehouses")}
-        value={warehouseId}
-        onChange={setWarehouseId}
-        options={warehouseOptions}
-      />
-
-      {showTarget ? (
-        <>
-          <SelectField<string>
-            label={t("transaction_target")}
-            hint={t("transaction_target_hint")}
-            value={targetType}
-            onChange={(v) => {
-              setTargetType(v);
-              setTargetId("");
-              setTargetFreeText("");
-            }}
-            options={targetTypeOptions}
-            error={targetError}
-            required
+      {mode === "edit" ? (
+        <View
+          style={[
+            styles.deleteRow,
+            { borderTopColor: colors.border, backgroundColor: colors.surface },
+          ]}
+        >
+          <BigButton
+            label={t("delete")}
+            onPress={onDelete}
+            variant="danger"
+            style={styles.deleteBtn}
           />
-
-          {showTargetInstance ? (
-            <SelectField<string>
-              label={t(keyForTargetType(targetType as InventoryTargetType))}
-              value={targetId}
-              onChange={setTargetId}
-              options={targetInstanceOptions}
-            />
-          ) : null}
-
-          {targetType === "other" || targetType === "worker" ? (
-            <FormField
-              label={t(keyForTargetType(targetType as InventoryTargetType))}
-              hint="e.g. John Kamau, tractor #2"
-              value={targetFreeText}
-              onChangeText={setTargetFreeText}
-              autoCapitalize="words"
-              autoCorrect={false}
-              maxLength={200}
-              returnKeyType="next"
-            />
-          ) : null}
-        </>
-      ) : null}
-
-      {showCost ? (
-        <>
-          <FormField
-            label={t("transaction_unit_cost")}
-            value={unitCost}
-            onChangeText={setUnitCost}
-            keyboardType="decimal-pad"
-            maxLength={12}
-            returnKeyType="next"
-          />
-
-          <FormField
-            label={t("transaction_total_cost")}
-            value={totalCost}
-            onChangeText={setTotalCost}
-            keyboardType="decimal-pad"
-            maxLength={14}
-            returnKeyType="next"
-          />
-
-          <FormField
-            label={t("cost_currency")}
-            hint="KES"
-            value={costCurrency}
-            onChangeText={setCostCurrency}
-            autoCapitalize="characters"
-            autoCorrect={false}
-            maxLength={5}
-            returnKeyType="next"
-          />
-        </>
-      ) : null}
-
-      {showSupplierBatch ? (
-        <>
-          <FormField
-            label={t("transaction_supplier")}
-            value={supplier}
-            onChangeText={setSupplier}
-            autoCapitalize="words"
-            autoCorrect={false}
-            maxLength={200}
-            returnKeyType="next"
-          />
-
-          <FormField
-            label={t("transaction_batch")}
-            value={batchNumber}
-            onChangeText={setBatchNumber}
-            autoCapitalize="characters"
-            autoCorrect={false}
-            maxLength={50}
-            returnKeyType="next"
-          />
-
-          <FormField
-            label={t("transaction_expiry")}
-            hint="YYYY-MM-DD (optional)"
-            value={expiryDate}
-            onChangeText={setExpiryDate}
-            autoCapitalize="none"
-            autoCorrect={false}
-            maxLength={20}
-            returnKeyType="next"
-          />
-        </>
-      ) : null}
-
-      <FormField
-        label={t("transaction_reference")}
-        value={reference}
-        onChangeText={setReference}
-        autoCapitalize="characters"
-        autoCorrect={false}
-        maxLength={80}
-        returnKeyType="next"
-      />
-
-      <FormField
-        label={t("transaction_notes")}
-        hint={t("plot_notes_hint")}
-        value={notes}
-        onChangeText={setNotes}
-        autoCapitalize="sentences"
-        autoCorrect={false}
-        maxLength={500}
-        returnKeyType="done"
-      />
-
-      {submitError ? (
-        <Text style={[styles.submitError, { color: colors.danger }]}>
-          {submitError}
-        </Text>
+        </View>
       ) : null}
     </Screen>
   );
 };
 
 const styles = StyleSheet.create({
+  noPadding: { padding: 0 },
   center: {
     flex: 1,
     alignItems: "center",
@@ -760,20 +720,19 @@ const styles = StyleSheet.create({
   bigIcon: { fontSize: 64 },
   emptyTitle: { ...typography.h2, textAlign: "center" },
   stretch: { marginTop: spacing.lg, alignSelf: "stretch" },
-  submitError: {
-    ...typography.caption,
-    textAlign: "center",
-    marginBottom: spacing.md,
-  },
-  footerRow: { flexDirection: "row", gap: spacing.md },
-  footerButton: { flex: 1 },
   itemHeader: {
     padding: spacing.md,
+    marginHorizontal: spacing.md,
+    marginTop: spacing.sm,
     borderRadius: 12,
     borderWidth: 1.5,
-    marginBottom: spacing.lg,
     gap: 4,
   },
   itemLabel: { ...typography.caption },
   itemName: { ...typography.bodyBold },
+  deleteRow: {
+    padding: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  deleteBtn: { alignSelf: "stretch" },
 });

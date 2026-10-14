@@ -6,6 +6,7 @@ import { Screen } from "../components/Screen";
 import { BigButton } from "../components/BigButton";
 import { FormField } from "../components/FormField";
 import { SelectField } from "../components/SelectField";
+import { WizardForm, type WizardStep } from "../components/WizardForm";
 import { useAppState } from "../state/AppStateContext";
 import { useTheme } from "../theme/ThemeContext";
 import { spacing } from "../theme/colors";
@@ -44,7 +45,6 @@ export const HerdFormScreen: React.FC<RootStackScreenProps<"HerdForm">> = ({
   const [purpose, setPurpose] = useState<HerdPurpose>("mixed");
   const [notes, setNotes] = useState("");
 
-  const [nameError, setNameError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [hydrating, setHydrating] = useState(mode === "edit");
@@ -91,18 +91,8 @@ export const HerdFormScreen: React.FC<RootStackScreenProps<"HerdForm">> = ({
     [t],
   );
 
-  const validate = useCallback((): boolean => {
-    if (!name.trim()) {
-      setNameError(t("herd_name_required"));
-      return false;
-    }
-    setNameError(null);
-    return true;
-  }, [name, t]);
-
   const onSubmit = useCallback(async (): Promise<void> => {
     if (!ctx) return;
-    if (!validate()) return;
     if (mode === "create" && !activeFarm) return;
 
     setSubmitting(true);
@@ -140,7 +130,6 @@ export const HerdFormScreen: React.FC<RootStackScreenProps<"HerdForm">> = ({
     }
   }, [
     ctx,
-    validate,
     mode,
     activeFarm,
     herdId,
@@ -179,6 +168,78 @@ export const HerdFormScreen: React.FC<RootStackScreenProps<"HerdForm">> = ({
     );
   }, [ctx, herdId, navigation, t]);
 
+  const steps = useMemo<readonly WizardStep[]>(
+    () => [
+      {
+        id: "identity",
+        titleKey: "step_herd_identity",
+        hintKey: "step_herd_identity_hint",
+        icon: "🐄",
+        validate: () => name.trim().length > 0,
+        render: () => (
+          <>
+            <FormField
+              label={t("herd_name")}
+              hint={t("herd_name_hint")}
+              value={name}
+              onChangeText={setName}
+              required
+              autoCapitalize="words"
+              autoCorrect={false}
+              maxLength={100}
+              returnKeyType="next"
+            />
+            <SelectField<Species>
+              label={t("herd_species")}
+              value={species}
+              onChange={setSpecies}
+              options={speciesOptions}
+            />
+            <SelectField<HerdPurpose>
+              label={t("herd_purpose")}
+              value={purpose}
+              onChange={setPurpose}
+              options={purposeOptions}
+            />
+          </>
+        ),
+      },
+      {
+        id: "extras",
+        titleKey: "step_herd_extras",
+        hintKey: "step_herd_extras_hint",
+        icon: "📝",
+        validate: () => true,
+        isOptional: true,
+        render: () => (
+          <>
+            <FormField
+              label={t("herd_breed")}
+              hint={t("herd_breed_hint")}
+              value={breed}
+              onChangeText={setBreed}
+              autoCapitalize="words"
+              autoCorrect={false}
+              maxLength={100}
+              returnKeyType="next"
+            />
+            <FormField
+              label={t("herd_notes")}
+              hint={t("plot_notes_hint")}
+              value={notes}
+              onChangeText={setNotes}
+              autoCapitalize="sentences"
+              autoCorrect={false}
+              maxLength={500}
+              returnKeyType="done"
+            />
+          </>
+        ),
+      },
+    ],
+    [t, name, species, speciesOptions, purpose, purposeOptions, breed, notes],
+  );
+
   if (hydrating) {
     return (
       <Screen scroll={false}>
@@ -194,86 +255,35 @@ export const HerdFormScreen: React.FC<RootStackScreenProps<"HerdForm">> = ({
   const submitLabel = mode === "create" ? t("create_herd") : t("update_herd");
 
   return (
-    <Screen
-      footer={
-        <View style={styles.footerRow}>
-          {mode === "edit" ? (
-            <BigButton
-              label={t("delete")}
-              onPress={onDelete}
-              variant="danger"
-              style={styles.footerButton}
-            />
-          ) : null}
+    <Screen scroll={false} contentStyle={styles.noPadding}>
+      <WizardForm
+        steps={steps}
+        onSubmit={onSubmit}
+        submitting={submitting}
+        submitLabel={submitLabel}
+        errorMessage={submitError}
+      />
+      {mode === "edit" ? (
+        <View
+          style={[
+            styles.deleteRow,
+            { borderTopColor: colors.border, backgroundColor: colors.surface },
+          ]}
+        >
           <BigButton
-            label={submitLabel}
-            onPress={() => void onSubmit()}
-            loading={submitting}
-            disabled={submitting}
-            style={styles.footerButton}
+            label={t("delete")}
+            onPress={onDelete}
+            variant="danger"
+            style={styles.deleteBtn}
           />
         </View>
-      }
-    >
-      <FormField
-        label={t("herd_name")}
-        hint={t("herd_name_hint")}
-        value={name}
-        onChangeText={setName}
-        error={nameError}
-        required
-        autoCapitalize="words"
-        autoCorrect={false}
-        maxLength={100}
-        returnKeyType="next"
-      />
-
-      <SelectField<Species>
-        label={t("herd_species")}
-        value={species}
-        onChange={setSpecies}
-        options={speciesOptions}
-      />
-
-      <FormField
-        label={t("herd_breed")}
-        hint={t("herd_breed_hint")}
-        value={breed}
-        onChangeText={setBreed}
-        autoCapitalize="words"
-        autoCorrect={false}
-        maxLength={100}
-        returnKeyType="next"
-      />
-
-      <SelectField<HerdPurpose>
-        label={t("herd_purpose")}
-        value={purpose}
-        onChange={setPurpose}
-        options={purposeOptions}
-      />
-
-      <FormField
-        label={t("herd_notes")}
-        hint={t("plot_notes_hint")}
-        value={notes}
-        onChangeText={setNotes}
-        autoCapitalize="sentences"
-        autoCorrect={false}
-        maxLength={500}
-        returnKeyType="done"
-      />
-
-      {submitError ? (
-        <Text style={[styles.submitError, { color: colors.danger }]}>
-          {submitError}
-        </Text>
       ) : null}
     </Screen>
   );
 };
 
 const styles = StyleSheet.create({
+  noPadding: { padding: 0 },
   center: {
     flex: 1,
     alignItems: "center",
@@ -281,11 +291,9 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   loadingText: { ...typography.body },
-  submitError: {
-    ...typography.caption,
-    textAlign: "center",
-    marginBottom: spacing.md,
+  deleteRow: {
+    padding: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
-  footerRow: { flexDirection: "row", gap: spacing.md },
-  footerButton: { flex: 1 },
+  deleteBtn: { alignSelf: "stretch" },
 });
