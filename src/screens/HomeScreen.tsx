@@ -17,6 +17,10 @@ type TileRoute =
   | "Livestock"
   | "Inventory"
   | "Tasks"
+  | "Finance"
+  | "Sales"
+  | "Dashboard"
+  | "Settings"
   | "Placeholder";
 
 type Tile = {
@@ -32,8 +36,10 @@ const TILES: readonly Tile[] = [
   { key: "livestock", emoji: "🐄", color: "#8D6E63", route: "Livestock" },
   { key: "inventory", emoji: "📦", color: "#FB8C00", route: "Inventory" },
   { key: "tasks", emoji: "✅", color: "#1E88E5", route: "Tasks" },
-  { key: "money", emoji: "💰", color: "#FDD835", route: "Placeholder" },
-  { key: "reports", emoji: "📊", color: "#8E24AA", route: "Placeholder" },
+  { key: "money", emoji: "💰", color: "#FDD835", route: "Finance" },
+  { key: "sales_title", emoji: "🧾", color: "#00897B", route: "Sales" },
+  { key: "reports", emoji: "📊", color: "#8E24AA", route: "Dashboard" },
+  { key: "settings", emoji: "⚙️", color: "#546E7A", route: "Settings" },
 ];
 
 export const HomeScreen: React.FC<RootStackScreenProps<"Home">> = ({
@@ -49,6 +55,10 @@ export const HomeScreen: React.FC<RootStackScreenProps<"Home">> = ({
       else if (tile.route === "Livestock") navigation.navigate("Livestock");
       else if (tile.route === "Inventory") navigation.navigate("Inventory");
       else if (tile.route === "Tasks") navigation.navigate("Tasks");
+      else if (tile.route === "Finance") navigation.navigate("Finance");
+      else if (tile.route === "Sales") navigation.navigate("Sales");
+      else if (tile.route === "Dashboard") navigation.navigate("Dashboard");
+      else if (tile.route === "Settings") navigation.navigate("Settings");
       else navigation.navigate("Placeholder", { titleKey: tile.key });
     },
     [navigation],

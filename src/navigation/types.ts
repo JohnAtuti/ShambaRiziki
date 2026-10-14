@@ -65,6 +65,46 @@ export type RootStackParamList = {
   TaskTemplateForm: { templateId?: string };
   Calendar: undefined;
 
+  // Finance (Phase 8)
+  Finance: undefined;
+  FinanceAccounts: undefined;
+  FinanceAccountForm: { accountId?: string };
+  FinanceCategories: undefined;
+  FinanceCategoryForm: { categoryId?: string };
+  FinanceTransactions: {
+    accountId?: string;
+    categoryId?: string;
+    targetType?: string;
+    targetId?: string;
+  };
+  FinanceTransactionForm: {
+    transactionId?: string;
+    defaultAccountId?: string;
+    defaultCategoryId?: string;
+    defaultType?: "income" | "expense" | "transfer";
+    defaultTargetType?: string;
+    defaultTargetId?: string;
+    defaultTargetLabel?: string;
+  };
+
+  // Dashboard (Phase 9)
+  Dashboard: undefined;
+
+  // Settings (Phase 10)
+  Settings: undefined;
+
+  // Sales (Phase 11)
+  Sales: undefined;
+  Customers: undefined;
+  CustomerForm: { customerId?: string };
+  CustomerDetail: { customerId: string };
+  Invoices: undefined;
+  SaleForm: {
+    saleId?: string;
+    defaultCustomerId?: string;
+  };
+  SaleDetail: { saleId: string };
+
   // Placeholder
   Placeholder: { titleKey: string };
 };

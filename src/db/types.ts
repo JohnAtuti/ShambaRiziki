@@ -175,19 +175,17 @@ export type InventoryTargetType =
   | "worker"
   | "other";
 
-// Tasks enums
-
 export type TaskType =
-  | "field_work" // generic crop work: weeding, thinning, scouting
+  | "field_work"
   | "planting"
   | "fertilizer"
   | "pesticide"
   | "irrigation"
   | "harvest"
-  | "livestock_care" // feeding, watering, cleaning
-  | "health_check" // vaccination, deworming, vet visit
+  | "livestock_care"
+  | "health_check"
   | "breeding"
-  | "production" // milking, egg collection
+  | "production"
   | "inventory_check"
   | "maintenance"
   | "admin"
@@ -214,6 +212,33 @@ export type TaskTargetType =
   | "herd"
   | "item"
   | "other";
+
+// Finance enums
+
+export type FinanceAccountType =
+  | "cash"
+  | "bank"
+  | "mobile_money"
+  | "savings"
+  | "credit"
+  | "other";
+
+export type FinanceCategoryType = "income" | "expense";
+
+export type FinanceTransactionType = "income" | "expense" | "transfer";
+
+export type FinanceTargetType =
+  | "plot"
+  | "crop_cycle"
+  | "animal"
+  | "herd"
+  | "item"
+  | "sale"
+  | "other";
+
+// Sales enums
+
+export type SaleStatus = "draft" | "sent" | "paid" | "cancelled";
 
 // ---------------------------------------------------------------------------
 // Base entity
@@ -493,6 +518,82 @@ export interface Task extends BaseEntity {
   estimatedHours: number | null;
   actualHours: number | null;
   notes: string | null;
+}
+
+export interface FinanceAccount extends BaseEntity {
+  farmId: string;
+  name: string;
+  accountType: FinanceAccountType;
+  openingBalance: number;
+  currency: string;
+  accountNumber: string | null;
+  institutionName: string | null;
+  isActive: boolean;
+  notes: string | null;
+}
+
+export interface FinanceCategory extends BaseEntity {
+  farmId: string;
+  name: string;
+  categoryType: FinanceCategoryType;
+  parentId: string | null;
+  icon: string | null;
+  defaultTargetType: FinanceTargetType | null;
+  isSystem: boolean;
+  isActive: boolean;
+  sortOrder: number;
+}
+
+export interface FinanceTransaction extends BaseEntity {
+  farmId: string;
+  accountId: string;
+  categoryId: string | null;
+  transferAccountId: string | null;
+  transactionType: FinanceTransactionType;
+  transactionDate: string;
+  amount: number;
+  currency: string;
+  description: string | null;
+  reference: string | null;
+  payee: string | null;
+  targetType: FinanceTargetType | null;
+  targetId: string | null;
+  targetLabel: string | null;
+  notes: string | null;
+}
+
+export interface Customer extends BaseEntity {
+  farmId: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  notes: string | null;
+  isActive: boolean;
+}
+
+export interface Sale extends BaseEntity {
+  farmId: string;
+  customerId: string | null;
+  saleDate: string;
+  dueDate: string | null;
+  reference: string | null;
+  total: number;
+  amountPaid: number;
+  currency: string;
+  status: SaleStatus;
+  notes: string | null;
+}
+
+export interface SaleItem extends BaseEntity {
+  farmId: string;
+  saleId: string;
+  itemId: string | null;
+  description: string;
+  quantity: number;
+  unit: string | null;
+  unitPrice: number;
+  lineTotal: number;
 }
 
 export type AuditAction = "create" | "update" | "delete" | "restore";
@@ -891,6 +992,124 @@ export interface TaskRow {
   estimated_hours: number | null;
   actual_hours: number | null;
   notes: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  version: number;
+  sync_status: string;
+  metadata: string;
+}
+
+export interface FinanceAccountRow {
+  id: string;
+  farm_id: string;
+  name: string;
+  account_type: string;
+  opening_balance: number;
+  currency: string;
+  account_number: string | null;
+  institution_name: string | null;
+  is_active: number;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  version: number;
+  sync_status: string;
+  metadata: string;
+}
+
+export interface FinanceCategoryRow {
+  id: string;
+  farm_id: string;
+  name: string;
+  category_type: string;
+  parent_id: string | null;
+  icon: string | null;
+  default_target_type: string | null;
+  is_system: number;
+  is_active: number;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  version: number;
+  sync_status: string;
+  metadata: string;
+}
+
+export interface FinanceTransactionRow {
+  id: string;
+  farm_id: string;
+  account_id: string;
+  category_id: string | null;
+  transfer_account_id: string | null;
+  transaction_type: string;
+  transaction_date: string;
+  amount: number;
+  currency: string;
+  description: string | null;
+  reference: string | null;
+  payee: string | null;
+  target_type: string | null;
+  target_id: string | null;
+  target_label: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  version: number;
+  sync_status: string;
+  metadata: string;
+}
+
+export interface CustomerRow {
+  id: string;
+  farm_id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  notes: string | null;
+  is_active: number;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  version: number;
+  sync_status: string;
+  metadata: string;
+}
+
+export interface SaleRow {
+  id: string;
+  farm_id: string;
+  customer_id: string | null;
+  sale_date: string;
+  due_date: string | null;
+  reference: string | null;
+  total: number;
+  amount_paid: number;
+  currency: string;
+  status: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  version: number;
+  sync_status: string;
+  metadata: string;
+}
+
+export interface SaleItemRow {
+  id: string;
+  farm_id: string;
+  sale_id: string;
+  item_id: string | null;
+  description: string;
+  quantity: number;
+  unit: string | null;
+  unit_price: number;
+  line_total: number;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -1315,6 +1534,131 @@ export const mapTaskRow = (row: TaskRow): Task => ({
   estimatedHours: row.estimated_hours,
   actualHours: row.actual_hours,
   notes: row.notes,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+  deletedAt: row.deleted_at,
+  version: row.version,
+  syncStatus: row.sync_status as SyncStatus,
+  metadata: safeParseObject(row.metadata),
+});
+
+export const mapFinanceAccountRow = (
+  row: FinanceAccountRow,
+): FinanceAccount => ({
+  id: row.id,
+  farmId: row.farm_id,
+  name: row.name,
+  accountType: row.account_type as FinanceAccountType,
+  openingBalance: row.opening_balance,
+  currency: row.currency,
+  accountNumber: row.account_number,
+  institutionName: row.institution_name,
+  isActive: row.is_active === 1,
+  notes: row.notes,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+  deletedAt: row.deleted_at,
+  version: row.version,
+  syncStatus: row.sync_status as SyncStatus,
+  metadata: safeParseObject(row.metadata),
+});
+
+export const mapFinanceCategoryRow = (
+  row: FinanceCategoryRow,
+): FinanceCategory => ({
+  id: row.id,
+  farmId: row.farm_id,
+  name: row.name,
+  categoryType: row.category_type as FinanceCategoryType,
+  parentId: row.parent_id,
+  icon: row.icon,
+  defaultTargetType:
+    (row.default_target_type as FinanceTargetType | null) ?? null,
+  isSystem: row.is_system === 1,
+  isActive: row.is_active === 1,
+  sortOrder: row.sort_order,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+  deletedAt: row.deleted_at,
+  version: row.version,
+  syncStatus: row.sync_status as SyncStatus,
+  metadata: safeParseObject(row.metadata),
+});
+
+export const mapFinanceTransactionRow = (
+  row: FinanceTransactionRow,
+): FinanceTransaction => ({
+  id: row.id,
+  farmId: row.farm_id,
+  accountId: row.account_id,
+  categoryId: row.category_id,
+  transferAccountId: row.transfer_account_id,
+  transactionType: row.transaction_type as FinanceTransactionType,
+  transactionDate: row.transaction_date,
+  amount: row.amount,
+  currency: row.currency,
+  description: row.description,
+  reference: row.reference,
+  payee: row.payee,
+  targetType: (row.target_type as FinanceTargetType | null) ?? null,
+  targetId: row.target_id,
+  targetLabel: row.target_label,
+  notes: row.notes,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+  deletedAt: row.deleted_at,
+  version: row.version,
+  syncStatus: row.sync_status as SyncStatus,
+  metadata: safeParseObject(row.metadata),
+});
+
+export const mapCustomerRow = (row: CustomerRow): Customer => ({
+  id: row.id,
+  farmId: row.farm_id,
+  name: row.name,
+  phone: row.phone,
+  email: row.email,
+  address: row.address,
+  notes: row.notes,
+  isActive: row.is_active === 1,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+  deletedAt: row.deleted_at,
+  version: row.version,
+  syncStatus: row.sync_status as SyncStatus,
+  metadata: safeParseObject(row.metadata),
+});
+
+export const mapSaleRow = (row: SaleRow): Sale => ({
+  id: row.id,
+  farmId: row.farm_id,
+  customerId: row.customer_id,
+  saleDate: row.sale_date,
+  dueDate: row.due_date,
+  reference: row.reference,
+  total: row.total,
+  amountPaid: row.amount_paid,
+  currency: row.currency,
+  status: row.status as SaleStatus,
+  notes: row.notes,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+  deletedAt: row.deleted_at,
+  version: row.version,
+  syncStatus: row.sync_status as SyncStatus,
+  metadata: safeParseObject(row.metadata),
+});
+
+export const mapSaleItemRow = (row: SaleItemRow): SaleItem => ({
+  id: row.id,
+  farmId: row.farm_id,
+  saleId: row.sale_id,
+  itemId: row.item_id,
+  description: row.description,
+  quantity: row.quantity,
+  unit: row.unit,
+  unitPrice: row.unit_price,
+  lineTotal: row.line_total,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
   deletedAt: row.deleted_at,

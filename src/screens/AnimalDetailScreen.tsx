@@ -17,12 +17,16 @@ import {
   animalProductionRepo,
   animalRepo,
   herdRepo,
+  reportsRepo,
+  windowForPeriod,
   type Animal,
   type AnimalBreedingRecord,
+  type AnimalEconomics,
   type AnimalFeedRecord,
   type AnimalHealthRecord,
   type AnimalProductionRecord,
   type Herd,
+  type ProductionType,
 } from "../db";
 import {
   colorForAnimalStatus,
@@ -38,6 +42,7 @@ import {
   keyForProductionType,
   keyForSex,
 } from "../utils/livestockLabels";
+import { formatMoney, formatMoneyDecimal } from "../utils/money";
 import type { RootStackScreenProps } from "../navigation/types";
 
 type TimelineEntry =
@@ -89,13 +94,32 @@ const QuickAdd: React.FC<{
   );
 };
 
+const dominantProductionType = (
+  records: readonly AnimalProductionRecord[],
+): ProductionType | null => {
+  if (records.length === 0) return null;
+  const counts = new Map<ProductionType, number>();
+  for (const r of records) {
+    counts.set(r.productionType, (counts.get(r.productionType) ?? 0) + 1);
+  }
+  let best: ProductionType = records[0].productionType;
+  let bestCount = 0;
+  for (const [type, count] of counts) {
+    if (count > bestCount) {
+      best = type;
+      bestCount = count;
+    }
+  }
+  return best;
+};
+
 export const AnimalDetailScreen: React.FC<
   RootStackScreenProps<"AnimalDetail">
 > = ({ route, navigation }) => {
   const { animalId } = route.params;
   const { t } = useTranslation();
   const { colors } = useTheme();
-  const { ctx } = useAppState();
+  const { ctx, activeFarm } = useAppState();
 
   const [animal, setAnimal] = useState<Animal | null>(null);
   const [herd, setHerd] = useState<Herd | null>(null);
@@ -103,10 +127,11 @@ export const AnimalDetailScreen: React.FC<
   const [breeding, setBreeding] = useState<AnimalBreedingRecord[]>([]);
   const [feeding, setFeeding] = useState<AnimalFeedRecord[]>([]);
   const [production, setProduction] = useState<AnimalProductionRecord[]>([]);
+  const [economics, setEconomics] = useState<AnimalEconomics | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async (): Promise<void> => {
-    if (!ctx) return;
+    if (!ctx || !activeFarm) return;
     try {
       const loaded = await animalRepo.getById(ctx, animalId);
       if (!loaded) {
@@ -129,12 +154,36 @@ export const AnimalDetailScreen: React.FC<
       setBreeding(b);
       setFeeding(f);
       setProduction(p);
+
+      // Economics — fetched separately so a failure here does not lose the
+      // animal's main data. Uses the animal's most-recorded production type,
+      // so a dairy cow shows milk economics and a layer shows eggs.
+      const dominant = dominantProductionType(p);
+      if (dominant) {
+        try {
+          const econ = await reportsRepo.getAnimalEconomics(
+            ctx,
+            activeFarm.id,
+            animalId,
+            dominant,
+            windowForPeriod("all_time"),
+          );
+          setEconomics(econ);
+        } catch (econErr) {
+          if (__DEV__) {
+            console.warn("[AnimalDetail] econ failed", econErr);
+          }
+          setEconomics(null);
+        }
+      } else {
+        setEconomics(null);
+      }
     } catch (err) {
       if (__DEV__) console.warn("[AnimalDetail] load failed", err);
     } finally {
       setLoading(false);
     }
-  }, [ctx, animalId]);
+  }, [ctx, activeFarm, animalId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -266,6 +315,11 @@ export const AnimalDetailScreen: React.FC<
       ? animal.bodyConditionScore.toFixed(1)
       : t("not_set");
 
+  const currency = activeFarm?.currency ?? "KES";
+  const showEcon = economics !== null && production.length > 0;
+  const econHasYield = economics !== null && economics.yieldQty > 0;
+  const econMixed = economics?.yieldUnitsMixed === true;
+
   return (
     <Screen
       scroll={false}
@@ -303,6 +357,64 @@ export const AnimalDetailScreen: React.FC<
             </View>
           </View>
         </View>
+
+        {showEcon && economics ? (
+          <View
+            style={[
+              styles.econCard,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
+            <View style={styles.econHeadingRow}>
+              <Text style={[styles.econHeading, { color: colors.textMuted }]}>
+                {t("finance_econ_heading")}
+              </Text>
+              <Text style={styles.econHeadingIcon}>
+                {iconForProductionType(economics.productionType)}
+              </Text>
+              <Text
+                style={[styles.econHeadingType, { color: colors.textMuted }]}
+              >
+                {t(keyForProductionType(economics.productionType))}
+              </Text>
+            </View>
+            <View style={styles.econRow}>
+              <Text style={[styles.econLabel, { color: colors.textMuted }]}>
+                {t("finance_econ_cost")}
+              </Text>
+              <Text style={[styles.econValue, { color: colors.text }]}>
+                {formatMoney(economics.cost, currency)}
+              </Text>
+            </View>
+            <View style={styles.econRow}>
+              <Text style={[styles.econLabel, { color: colors.textMuted }]}>
+                {t("finance_econ_yield")}
+              </Text>
+              <Text style={[styles.econValue, { color: colors.text }]}>
+                {econHasYield
+                  ? `${economics.yieldQty}${
+                      economics.yieldUnit ? ` ${economics.yieldUnit}` : ""
+                    }`
+                  : t("finance_econ_no_yield")}
+              </Text>
+            </View>
+            <View style={styles.econRow}>
+              <Text style={[styles.econLabel, { color: colors.textMuted }]}>
+                {t("finance_econ_per_unit")}
+              </Text>
+              <Text style={[styles.econValue, { color: colors.text }]}>
+                {econMixed
+                  ? t("finance_econ_mixed_units")
+                  : economics.costPerUnit != null && economics.yieldUnit
+                    ? `${formatMoneyDecimal(
+                        economics.costPerUnit,
+                        currency,
+                      )} / ${economics.yieldUnit}`
+                    : "—"}
+              </Text>
+            </View>
+          </View>
+        ) : null}
 
         <View
           style={[
@@ -457,6 +569,34 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: 0.5,
   },
+
+  econCard: {
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
+    padding: spacing.md,
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  econHeadingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  econHeading: {
+    ...typography.label,
+    textTransform: "uppercase",
+  },
+  econHeadingIcon: { fontSize: 18 },
+  econHeadingType: { ...typography.label },
+  econRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.md,
+  },
+  econLabel: { ...typography.body },
+  econValue: { ...typography.bodyBold },
 
   infoCard: {
     borderRadius: 20,

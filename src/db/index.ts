@@ -151,3 +151,67 @@ export { runSmokeTest } from "./smokeTest";
 
 // Domain types
 export * from "./types";
+
+// Repos — finance
+export { financeAccountRepo } from "./financeAccounts";
+export type {
+  CreateAccountInput,
+  UpdateAccountInput,
+  FinanceAccountRepo,
+  AccountBalance,
+  AccountBalanceRow,
+} from "./financeAccounts";
+
+export { financeCategoryRepo } from "./financeCategories";
+export type {
+  CreateCategoryInput,
+  UpdateCategoryInput,
+  FinanceCategoryRepo,
+} from "./financeCategories";
+
+export { financeTransactionRepo } from "./financeTransactions";
+export type {
+  CreateTransactionInput as CreateFinanceTransactionInput,
+  UpdateTransactionInput as UpdateFinanceTransactionInput,
+  FinanceTransactionRepo,
+  CategoryTotal,
+  TargetTotal,
+} from "./financeTransactions";
+
+// Repos — reports (read-only aggregates over finance)
+export { reportsRepo, windowForPeriod } from "./reports";
+export type {
+  ReportsRepo,
+  DateWindow,
+  PeriodKey,
+  PeriodSummary,
+  TargetProfit,
+  MonthlySeriesPoint,
+  FinanceTargetKind,
+  CycleEconomics,
+  AnimalEconomics,
+} from "./reports";
+
+// Repos — backup
+export { backupRepo } from "./backup";
+export type { BackupRepo, BackupFile, BackupValidation } from "./backup";
+
+// Repos — export (CSV)
+export { exportRepo, exportFilename } from "./export";
+export type { ExportRepo } from "./export";
+
+// Repos — sales
+export { customerRepo } from "./customers";
+export type {
+  CustomerRepo,
+  CreateCustomerInput,
+  UpdateCustomerInput,
+} from "./customers";
+
+export { saleRepo } from "./sales";
+export type {
+  SaleRepo,
+  CreateSaleInput,
+  UpdateSaleInput,
+  SaleItemInput,
+} from "./sales";

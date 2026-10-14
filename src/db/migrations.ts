@@ -596,6 +596,183 @@ const tasks: Migration = {
   },
 };
 
+const finance: Migration = {
+  version: 8,
+  name: "finance",
+  up: async (db) => {
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS finance_accounts (
+        id                TEXT PRIMARY KEY NOT NULL,
+        farm_id           TEXT NOT NULL,
+        name              TEXT NOT NULL,
+        account_type      TEXT NOT NULL DEFAULT 'cash',
+        opening_balance   REAL NOT NULL DEFAULT 0,
+        currency          TEXT NOT NULL DEFAULT 'KES',
+        account_number    TEXT,
+        institution_name  TEXT,
+        is_active         INTEGER NOT NULL DEFAULT 1,
+        notes             TEXT,
+        created_at        TEXT NOT NULL,
+        updated_at        TEXT NOT NULL,
+        deleted_at        TEXT,
+        version           INTEGER NOT NULL DEFAULT 1,
+        sync_status       TEXT NOT NULL DEFAULT 'local',
+        metadata          TEXT NOT NULL DEFAULT '{}',
+        FOREIGN KEY (farm_id) REFERENCES farms(id) ON DELETE RESTRICT
+      );
+      CREATE INDEX IF NOT EXISTS idx_fin_accounts_farm    ON finance_accounts(farm_id);
+      CREATE INDEX IF NOT EXISTS idx_fin_accounts_type    ON finance_accounts(account_type);
+      CREATE INDEX IF NOT EXISTS idx_fin_accounts_active  ON finance_accounts(is_active);
+      CREATE INDEX IF NOT EXISTS idx_fin_accounts_deleted ON finance_accounts(deleted_at);
+
+      CREATE TABLE IF NOT EXISTS finance_categories (
+        id                   TEXT PRIMARY KEY NOT NULL,
+        farm_id              TEXT NOT NULL,
+        name                 TEXT NOT NULL,
+        category_type        TEXT NOT NULL,
+        parent_id            TEXT,
+        icon                 TEXT,
+        default_target_type  TEXT,
+        is_system            INTEGER NOT NULL DEFAULT 0,
+        is_active            INTEGER NOT NULL DEFAULT 1,
+        sort_order           INTEGER NOT NULL DEFAULT 0,
+        created_at           TEXT NOT NULL,
+        updated_at           TEXT NOT NULL,
+        deleted_at           TEXT,
+        version              INTEGER NOT NULL DEFAULT 1,
+        sync_status          TEXT NOT NULL DEFAULT 'local',
+        metadata             TEXT NOT NULL DEFAULT '{}',
+        FOREIGN KEY (farm_id) REFERENCES farms(id) ON DELETE RESTRICT,
+        FOREIGN KEY (parent_id) REFERENCES finance_categories(id) ON DELETE SET NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_fin_cats_farm    ON finance_categories(farm_id);
+      CREATE INDEX IF NOT EXISTS idx_fin_cats_type    ON finance_categories(category_type);
+      CREATE INDEX IF NOT EXISTS idx_fin_cats_parent  ON finance_categories(parent_id);
+      CREATE INDEX IF NOT EXISTS idx_fin_cats_active  ON finance_categories(is_active);
+      CREATE INDEX IF NOT EXISTS idx_fin_cats_deleted ON finance_categories(deleted_at);
+
+      CREATE TABLE IF NOT EXISTS finance_transactions (
+        id                    TEXT PRIMARY KEY NOT NULL,
+        farm_id               TEXT NOT NULL,
+        account_id            TEXT NOT NULL,
+        category_id           TEXT,
+        transfer_account_id   TEXT,
+        transaction_type      TEXT NOT NULL,
+        transaction_date      TEXT NOT NULL,
+        amount                REAL NOT NULL,
+        currency              TEXT NOT NULL DEFAULT 'KES',
+        description           TEXT,
+        reference             TEXT,
+        payee                 TEXT,
+        target_type           TEXT,
+        target_id             TEXT,
+        target_label          TEXT,
+        notes                 TEXT,
+        created_at            TEXT NOT NULL,
+        updated_at            TEXT NOT NULL,
+        deleted_at            TEXT,
+        version               INTEGER NOT NULL DEFAULT 1,
+        sync_status           TEXT NOT NULL DEFAULT 'local',
+        metadata              TEXT NOT NULL DEFAULT '{}',
+        FOREIGN KEY (farm_id) REFERENCES farms(id) ON DELETE RESTRICT,
+        FOREIGN KEY (account_id) REFERENCES finance_accounts(id) ON DELETE RESTRICT,
+        FOREIGN KEY (transfer_account_id) REFERENCES finance_accounts(id) ON DELETE SET NULL,
+        FOREIGN KEY (category_id) REFERENCES finance_categories(id) ON DELETE SET NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_fin_tx_farm      ON finance_transactions(farm_id);
+      CREATE INDEX IF NOT EXISTS idx_fin_tx_account   ON finance_transactions(account_id);
+      CREATE INDEX IF NOT EXISTS idx_fin_tx_transfer  ON finance_transactions(transfer_account_id);
+      CREATE INDEX IF NOT EXISTS idx_fin_tx_category  ON finance_transactions(category_id);
+      CREATE INDEX IF NOT EXISTS idx_fin_tx_type      ON finance_transactions(transaction_type);
+      CREATE INDEX IF NOT EXISTS idx_fin_tx_date      ON finance_transactions(transaction_date);
+      CREATE INDEX IF NOT EXISTS idx_fin_tx_target    ON finance_transactions(target_type, target_id);
+      CREATE INDEX IF NOT EXISTS idx_fin_tx_deleted   ON finance_transactions(deleted_at);
+    `);
+  },
+};
+
+const sales: Migration = {
+  version: 9,
+  name: "sales",
+  up: async (db) => {
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS customers (
+        id              TEXT PRIMARY KEY NOT NULL,
+        farm_id         TEXT NOT NULL,
+        name            TEXT NOT NULL,
+        phone           TEXT,
+        email           TEXT,
+        address         TEXT,
+        notes           TEXT,
+        is_active       INTEGER NOT NULL DEFAULT 1,
+        created_at      TEXT NOT NULL,
+        updated_at      TEXT NOT NULL,
+        deleted_at      TEXT,
+        version         INTEGER NOT NULL DEFAULT 1,
+        sync_status     TEXT NOT NULL DEFAULT 'local',
+        metadata        TEXT NOT NULL DEFAULT '{}',
+        FOREIGN KEY (farm_id) REFERENCES farms(id) ON DELETE RESTRICT
+      );
+      CREATE INDEX IF NOT EXISTS idx_customers_farm    ON customers(farm_id);
+      CREATE INDEX IF NOT EXISTS idx_customers_name    ON customers(name);
+      CREATE INDEX IF NOT EXISTS idx_customers_active  ON customers(is_active);
+      CREATE INDEX IF NOT EXISTS idx_customers_deleted ON customers(deleted_at);
+
+      CREATE TABLE IF NOT EXISTS sales (
+        id              TEXT PRIMARY KEY NOT NULL,
+        farm_id         TEXT NOT NULL,
+        customer_id     TEXT,
+        sale_date       TEXT NOT NULL,
+        due_date        TEXT,
+        reference       TEXT,
+        total           REAL NOT NULL DEFAULT 0,
+        amount_paid     REAL NOT NULL DEFAULT 0,
+        currency        TEXT NOT NULL DEFAULT 'KES',
+        status          TEXT NOT NULL DEFAULT 'draft',
+        notes           TEXT,
+        created_at      TEXT NOT NULL,
+        updated_at      TEXT NOT NULL,
+        deleted_at      TEXT,
+        version         INTEGER NOT NULL DEFAULT 1,
+        sync_status     TEXT NOT NULL DEFAULT 'local',
+        metadata        TEXT NOT NULL DEFAULT '{}',
+        FOREIGN KEY (farm_id) REFERENCES farms(id) ON DELETE RESTRICT,
+        FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_sales_farm     ON sales(farm_id);
+      CREATE INDEX IF NOT EXISTS idx_sales_customer ON sales(customer_id);
+      CREATE INDEX IF NOT EXISTS idx_sales_date     ON sales(sale_date);
+      CREATE INDEX IF NOT EXISTS idx_sales_status   ON sales(status);
+      CREATE INDEX IF NOT EXISTS idx_sales_deleted  ON sales(deleted_at);
+
+      CREATE TABLE IF NOT EXISTS sale_items (
+        id              TEXT PRIMARY KEY NOT NULL,
+        farm_id         TEXT NOT NULL,
+        sale_id         TEXT NOT NULL,
+        item_id         TEXT,
+        description     TEXT NOT NULL,
+        quantity        REAL NOT NULL DEFAULT 0,
+        unit            TEXT,
+        unit_price      REAL NOT NULL DEFAULT 0,
+        line_total      REAL NOT NULL DEFAULT 0,
+        created_at      TEXT NOT NULL,
+        updated_at      TEXT NOT NULL,
+        deleted_at      TEXT,
+        version         INTEGER NOT NULL DEFAULT 1,
+        sync_status     TEXT NOT NULL DEFAULT 'local',
+        metadata        TEXT NOT NULL DEFAULT '{}',
+        FOREIGN KEY (farm_id) REFERENCES farms(id) ON DELETE RESTRICT,
+        FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE RESTRICT,
+        FOREIGN KEY (item_id) REFERENCES inventory_items(id) ON DELETE SET NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_sale_items_farm    ON sale_items(farm_id);
+      CREATE INDEX IF NOT EXISTS idx_sale_items_sale    ON sale_items(sale_id);
+      CREATE INDEX IF NOT EXISTS idx_sale_items_item    ON sale_items(item_id);
+      CREATE INDEX IF NOT EXISTS idx_sale_items_deleted ON sale_items(deleted_at);
+    `);
+  },
+};
+
 export const MIGRATIONS: readonly Migration[] = [
   initial,
   plots,
@@ -604,6 +781,8 @@ export const MIGRATIONS: readonly Migration[] = [
   livestock,
   inventory,
   tasks,
+  finance,
+  sales,
 ];
 
 export const LATEST_VERSION: number = MIGRATIONS.reduce(

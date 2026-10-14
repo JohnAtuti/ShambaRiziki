@@ -45,6 +45,21 @@ import { TaskDetailScreen } from "../screens/TaskDetailScreen";
 import { TaskTemplatesScreen } from "../screens/TaskTemplatesScreen";
 import { TaskTemplateFormScreen } from "../screens/TaskTemplateFormScreen";
 import { CalendarScreen } from "../screens/CalendarScreen";
+import { FinanceScreen } from "../screens/FinanceScreen";
+import { FinanceAccountsScreen } from "../screens/FinanceAccountsScreen";
+import { FinanceAccountFormScreen } from "../screens/FinanceAccountFormScreen";
+import { FinanceCategoriesScreen } from "../screens/FinanceCategoriesScreen";
+import { FinanceCategoryFormScreen } from "../screens/FinanceCategoryFormScreen";
+import { FinanceTransactionsScreen } from "../screens/FinanceTransactionsScreen";
+import { FinanceTransactionFormScreen } from "../screens/FinanceTransactionFormScreen";
+import { DashboardScreen } from "../screens/DashboardScreen";
+import { SettingsScreen } from "../screens/SettingsScreen";
+import { SalesScreen } from "../screens/SalesScreen";
+import { CustomersScreen } from "../screens/CustomersScreen";
+import { CustomerFormScreen } from "../screens/CustomerFormScreen";
+import { InvoicesScreen } from "../screens/InvoicesScreen";
+import { SaleFormScreen } from "../screens/SaleFormScreen";
+import { SaleDetailScreen } from "../screens/SaleDetailScreen";
 import { useTheme } from "../theme/ThemeContext";
 import { useAppState } from "../state/AppStateContext";
 
@@ -337,6 +352,107 @@ export const RootNavigator: React.FC = () => {
               name="Calendar"
               component={CalendarScreen}
               options={{ title: t("calendar_title") }}
+            />
+
+            {/* Finance */}
+            <Stack.Screen
+              name="Finance"
+              component={FinanceScreen}
+              options={{ title: t("money") }}
+            />
+            <Stack.Screen
+              name="FinanceAccounts"
+              component={FinanceAccountsScreen}
+              options={{ title: t("finance_accounts") }}
+            />
+            <Stack.Screen
+              name="FinanceAccountForm"
+              component={FinanceAccountFormScreen}
+              options={({ route }) => ({
+                title: route.params?.accountId
+                  ? t("finance_edit_account")
+                  : t("finance_new_account"),
+              })}
+            />
+            <Stack.Screen
+              name="FinanceCategories"
+              component={FinanceCategoriesScreen}
+              options={{ title: t("finance_categories") }}
+            />
+            <Stack.Screen
+              name="FinanceCategoryForm"
+              component={FinanceCategoryFormScreen}
+              options={({ route }) => ({
+                title: route.params?.categoryId
+                  ? t("finance_edit_category")
+                  : t("finance_new_category"),
+              })}
+            />
+            <Stack.Screen
+              name="FinanceTransactions"
+              component={FinanceTransactionsScreen}
+              options={{ title: t("finance_transactions") }}
+            />
+            <Stack.Screen
+              name="FinanceTransactionForm"
+              component={FinanceTransactionFormScreen}
+              options={({ route }) => ({
+                title: route.params?.transactionId
+                  ? t("finance_edit_transaction")
+                  : t("finance_new_transaction"),
+              })}
+            />
+
+            {/* Dashboard */}
+            <Stack.Screen
+              name="Dashboard"
+              component={DashboardScreen}
+              options={{ title: t("dashboard_title") }}
+            />
+
+            {/* Settings */}
+            <Stack.Screen
+              name="Settings"
+              component={SettingsScreen}
+              options={{ title: t("settings") }}
+            />
+
+            {/* Sales */}
+            <Stack.Screen
+              name="Sales"
+              component={SalesScreen}
+              options={{ title: t("sales_title") }}
+            />
+            <Stack.Screen
+              name="Customers"
+              component={CustomersScreen}
+              options={{ title: t("sales_customers_title") }}
+            />
+            <Stack.Screen
+              name="CustomerForm"
+              component={CustomerFormScreen}
+              options={({ route }) => ({
+                title: route.params?.customerId
+                  ? t("edit_customer")
+                  : t("new_customer"),
+              })}
+            />
+            <Stack.Screen
+              name="Invoices"
+              component={InvoicesScreen}
+              options={{ title: t("sales_invoices_title") }}
+            />
+            <Stack.Screen
+              name="SaleForm"
+              component={SaleFormScreen}
+              options={({ route }) => ({
+                title: route.params?.saleId ? t("edit_sale") : t("new_sale"),
+              })}
+            />
+            <Stack.Screen
+              name="SaleDetail"
+              component={SaleDetailScreen}
+              options={{ title: t("sale_details") }}
             />
 
             <Stack.Screen

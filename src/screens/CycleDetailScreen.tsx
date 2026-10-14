@@ -16,9 +16,12 @@ import {
   cropCycleRepo,
   cropRepo,
   plotRepo,
+  reportsRepo,
+  windowForPeriod,
   type Crop,
   type CropActivity,
   type CropCycle,
+  type CycleEconomics,
   type Plot,
 } from "../db";
 import {
@@ -27,6 +30,7 @@ import {
   keyForActivityType,
   keyForStatus,
 } from "../utils/cropLabels";
+import { formatMoney, formatMoneyDecimal } from "../utils/money";
 import type { RootStackScreenProps } from "../navigation/types";
 
 export const CycleDetailScreen: React.FC<
@@ -36,16 +40,17 @@ export const CycleDetailScreen: React.FC<
   const { t } = useTranslation();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const { ctx } = useAppState();
+  const { ctx, activeFarm } = useAppState();
 
   const [cycle, setCycle] = useState<CropCycle | null>(null);
   const [crop, setCrop] = useState<Crop | null>(null);
   const [plot, setPlot] = useState<Plot | null>(null);
   const [activities, setActivities] = useState<CropActivity[]>([]);
+  const [economics, setEconomics] = useState<CycleEconomics | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async (): Promise<void> => {
-    if (!ctx) return;
+    if (!ctx || !activeFarm) return;
     try {
       const loadedCycle = await cropCycleRepo.getById(ctx, cycleId);
       if (!loadedCycle) {
@@ -53,15 +58,23 @@ export const CycleDetailScreen: React.FC<
         setLoading(false);
         return;
       }
-      const [loadedCrop, loadedPlot, loadedActivities] = await Promise.all([
-        cropRepo.getById(ctx, loadedCycle.cropId),
-        plotRepo.getById(ctx, loadedCycle.plotId),
-        cropActivityRepo.listByCycle(ctx, cycleId),
-      ]);
+      const [loadedCrop, loadedPlot, loadedActivities, econ] =
+        await Promise.all([
+          cropRepo.getById(ctx, loadedCycle.cropId),
+          plotRepo.getById(ctx, loadedCycle.plotId),
+          cropActivityRepo.listByCycle(ctx, cycleId),
+          reportsRepo.getCycleEconomics(
+            ctx,
+            activeFarm.id,
+            cycleId,
+            windowForPeriod("all_time"),
+          ),
+        ]);
       setCycle(loadedCycle);
       setCrop(loadedCrop);
       setPlot(loadedPlot);
       setActivities(loadedActivities);
+      setEconomics(econ);
     } catch (err) {
       if (__DEV__) {
         console.warn("[CycleDetail] load failed", err);
@@ -69,7 +82,7 @@ export const CycleDetailScreen: React.FC<
     } finally {
       setLoading(false);
     }
-  }, [ctx, cycleId]);
+  }, [ctx, activeFarm, cycleId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -192,6 +205,9 @@ export const CycleDetailScreen: React.FC<
   }
 
   const statusLabel = t(keyForStatus(cycle.status));
+  const currency = activeFarm?.currency ?? "KES";
+  const econHasYield = economics !== null && economics.yieldQty > 0;
+  const econMixed = economics?.yieldUnitsMixed === true;
 
   return (
     <Screen
@@ -219,6 +235,54 @@ export const CycleDetailScreen: React.FC<
           {cycleSummary}
         </Text>
       </View>
+
+      {economics ? (
+        <View
+          style={[
+            styles.econCard,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
+        >
+          <Text style={[styles.econHeading, { color: colors.textMuted }]}>
+            {t("finance_econ_heading")}
+          </Text>
+          <View style={styles.econRow}>
+            <Text style={[styles.econLabel, { color: colors.textMuted }]}>
+              {t("finance_econ_cost")}
+            </Text>
+            <Text style={[styles.econValue, { color: colors.text }]}>
+              {formatMoney(economics.cost, currency)}
+            </Text>
+          </View>
+          <View style={styles.econRow}>
+            <Text style={[styles.econLabel, { color: colors.textMuted }]}>
+              {t("finance_econ_yield")}
+            </Text>
+            <Text style={[styles.econValue, { color: colors.text }]}>
+              {econHasYield
+                ? `${economics.yieldQty}${
+                    economics.yieldUnit ? ` ${economics.yieldUnit}` : ""
+                  }`
+                : t("finance_econ_no_yield")}
+            </Text>
+          </View>
+          <View style={styles.econRow}>
+            <Text style={[styles.econLabel, { color: colors.textMuted }]}>
+              {t("finance_econ_per_unit")}
+            </Text>
+            <Text style={[styles.econValue, { color: colors.text }]}>
+              {econMixed
+                ? t("finance_econ_mixed_units")
+                : economics.costPerUnit != null && economics.yieldUnit
+                  ? `${formatMoneyDecimal(
+                      economics.costPerUnit,
+                      currency,
+                    )} / ${economics.yieldUnit}`
+                  : "—"}
+            </Text>
+          </View>
+        </View>
+      ) : null}
 
       <Text style={[styles.sectionHeading, { color: colors.text }]}>
         {t("activities")}
@@ -292,6 +356,27 @@ const styles = StyleSheet.create({
   statusIcon: { fontSize: 24 },
   statusLabel: { ...typography.label },
   summary: { ...typography.body },
+
+  econCard: {
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
+    padding: spacing.md,
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  econHeading: {
+    ...typography.label,
+    textTransform: "uppercase",
+    marginBottom: spacing.xs,
+  },
+  econRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.md,
+  },
+  econLabel: { ...typography.body },
+  econValue: { ...typography.bodyBold },
 
   sectionHeading: { ...typography.h3, marginBottom: spacing.md },
 
