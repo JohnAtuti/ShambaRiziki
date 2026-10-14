@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
+import { DateField } from "../components/DateField";
 import { useTranslation } from "react-i18next";
 
 import { Screen } from "../components/Screen";
@@ -362,15 +363,12 @@ export const AnimalFormScreen: React.FC<RootStackScreenProps<"AnimalForm">> = ({
               onChange={setSex}
               options={sexOptions}
             />
-            <FormField
+            <DateField
               label={t("animal_date_of_birth")}
               hint={t("animal_date_of_birth_hint")}
               value={dateOfBirth}
-              onChangeText={setDateOfBirth}
-              autoCapitalize="none"
-              autoCorrect={false}
-              maxLength={20}
-              returnKeyType="done"
+              onChange={setDateOfBirth}
+              maximumDate={new Date()}
             />
           </>
         ),
@@ -390,15 +388,11 @@ export const AnimalFormScreen: React.FC<RootStackScreenProps<"AnimalForm">> = ({
               onChange={setOrigin}
               options={originOptions}
             />
-            <FormField
+            <DateField
               label={t("animal_purchase_date")}
-              hint="YYYY-MM-DD"
               value={purchaseDate}
-              onChangeText={setPurchaseDate}
-              autoCapitalize="none"
-              autoCorrect={false}
-              maxLength={20}
-              returnKeyType="next"
+              onChange={setPurchaseDate}
+              maximumDate={new Date()}
             />
             <FormField
               label={t("animal_purchase_price")}

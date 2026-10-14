@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
+import { DateField } from "../components/DateField";
 
 import { Screen } from "../components/Screen";
 import { BigButton } from "../components/BigButton";
@@ -269,16 +270,12 @@ export const CycleFormScreen: React.FC<RootStackScreenProps<"CycleForm">> = ({
         },
         render: () => (
           <>
-            <FormField
+            <DateField
               label={t("planting_date")}
-              hint="2026-03-15"
               value={plantingDate}
-              onChangeText={setPlantingDate}
+              onChange={setPlantingDate}
               required
-              autoCapitalize="none"
-              autoCorrect={false}
-              maxLength={20}
-              returnKeyType="next"
+              clearable={false}
             />
             <SelectField<PlantingMethod>
               label={t("planting_method")}
@@ -298,15 +295,10 @@ export const CycleFormScreen: React.FC<RootStackScreenProps<"CycleForm">> = ({
         isOptional: true,
         render: () => (
           <>
-            <FormField
+            <DateField
               label={t("expected_harvest_date")}
-              hint="2026-07-15"
               value={expectedHarvestDate}
-              onChangeText={setExpectedHarvestDate}
-              autoCapitalize="none"
-              autoCorrect={false}
-              maxLength={20}
-              returnKeyType="next"
+              onChange={setExpectedHarvestDate}
             />
             <SelectField<CycleStatus>
               label={t("cycle_status")}

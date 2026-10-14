@@ -7,6 +7,7 @@ import { BigButton } from "../components/BigButton";
 import { FormField } from "../components/FormField";
 import { SelectField } from "../components/SelectField";
 import { WizardForm, type WizardStep } from "../components/WizardForm";
+import { DateField } from "../components/DateField";
 import { useAppState } from "../state/AppStateContext";
 import { useTheme } from "../theme/ThemeContext";
 import { spacing } from "../theme/colors";
@@ -397,16 +398,12 @@ export const TaskFormScreen: React.FC<RootStackScreenProps<"TaskForm">> = ({
         },
         render: () => (
           <>
-            <FormField
+            <DateField
               label={t("task_due_date")}
-              hint="2026-04-20"
               value={dueDate}
-              onChangeText={setDueDate}
+              onChange={setDueDate}
               required
-              autoCapitalize="none"
-              autoCorrect={false}
-              maxLength={20}
-              returnKeyType="next"
+              clearable={false}
             />
             <SelectField<TaskPriority>
               label={t("task_priority")}

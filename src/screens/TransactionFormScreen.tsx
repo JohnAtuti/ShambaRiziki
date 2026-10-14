@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
+import { DateField } from "../components/DateField";
 import { useTranslation } from "react-i18next";
 
 import { Screen } from "../components/Screen";
@@ -405,16 +406,12 @@ export const TransactionFormScreen: React.FC<
               options={typeOptions}
               required
             />
-            <FormField
+            <DateField
               label={t("transaction_date")}
-              hint="2026-04-10"
               value={transactionDate}
-              onChangeText={setTransactionDate}
+              onChange={setTransactionDate}
               required
-              autoCapitalize="none"
-              autoCorrect={false}
-              maxLength={20}
-              returnKeyType="next"
+              clearable={false}
             />
             <FormField
               label={t("transaction_quantity")}
@@ -502,15 +499,10 @@ export const TransactionFormScreen: React.FC<
               maxLength={50}
               returnKeyType="next"
             />
-            <FormField
+            <DateField
               label={t("transaction_expiry")}
-              hint="YYYY-MM-DD"
               value={expiryDate}
-              onChangeText={setExpiryDate}
-              autoCapitalize="none"
-              autoCorrect={false}
-              maxLength={20}
-              returnKeyType="done"
+              onChange={setExpiryDate}
             />
           </>
         ),
